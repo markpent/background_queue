@@ -1,6 +1,28 @@
 = background_queue
 
-Description goes here.
+This is a gem to manage background tasks. The primary focus is organising the tasks so they will not overload the machine(s) running the tasks, while
+still giving a fair, balanced allocation of running time to members in the queue.
+
+== Queue Management
+* Each task on the queue is associated with an 'owner', 'subject' and 'id'
+* Each subject has a priority (0=highest).
+* An 'owner' has a queue of 'subjects' which is a queue of tasks.
+
+=== Finding the next task to run
+1. Get the next owner with the highest priority subject
+2. Get the next subject within the above owner with the highest priority
+3. Pop the next task off the subject queue.
+4. Push the subject to the end of the owners subject queue.
+5. Push the owner to the end of the queue.
+
+== Worker Managment
+* The actual workers are implimented using passenger.
+* The queue calls the passenger server(s) through HTTP.
+* The queue limits the number of simultaneous workers at any one time.
+* Using passenger to manage the workers means workers are efficiently re-used, with a full Rails enviroment loaded and ready to go.
+* Library methods are called from within the worker to co-ordinate the status of the worker.
+
+
 
 == Contributing to background_queue
  
