@@ -15,13 +15,13 @@ In your environment, initialize a constant BackgroundQueue::Client
 Now you can use your BG\_QUEUE to add a single task. Note: the "task_id" should be unique, even between owners/jobs. If there is an existing task with the same id in any queue,
 even if its a different owner/job, the existing task will be removed before this task is added the the ownerjob queue.
 
-     BG_QUEUE.add_task(:worker_name, "owner identifier", "job identifier", "task_id", {:some_task=>:arguments}, {:priority=>1})
+     BG_QUEUE.add_task(:worker_name, "owner identifier", "job identifier", "task_id", {:some_task=>:params}, {:priority=>1})
   
   
 ### Starting multiple tasks
 Or you can queue multiple tasks at once. 
 
-     BG_QUEUE.add_tasks(:worker_name, "owner identifier", "job identifier", ["task1_id" => {:some_task=>:arguments}, "task2_id" => {:some_task=>:arguments}], {:priority=>1})
+     BG_QUEUE.add_tasks(:worker_name, "owner identifier", "job identifier", [["task1_id" , {:some_task=>:params}], ["task2_id" , {:some_task=>:params}]], {:shared=>:params}, {:priority=>1})
 
 ### Removing tasks
 Sometimes a task needs to be removed or stopped. Only the task\_id is needed because they are globally unique.
