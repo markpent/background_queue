@@ -2,8 +2,60 @@ require "erb"
 require "yaml"
 
 module BackgroundQueue
+
+  #The client configuration which is stored as a YAML file containing a root key for each environments configuration, much like database.yml.
+  #
+  #Example
+  #=======
+  #
+  #   development:
+  #     server:
+  #       host: 127.0.0.1
+  #       port: 3000
+  #     memcache: 127.0.0.1:9999
+  #   production:
+  #     server: 
+  #       host: 192.168.3.56
+  #       port: 3000
+  #     failover: 
+  #       -
+  #         host: 192.168.3.57
+  #         port: 3000
+  #       -
+  #         host: 192.168.3.58
+  #     memcache: 192.168.3.1:9999, 192.168.3.3:9999
   class Config
+    
     DEFAULT_PORT = 2222
+    
+    #load the configuration using a file path
+    def self.load_file(path)
+      string = get_string_from_file(path)
+      load_string(string, path)
+    end
+    
+    #load the configuration using a string that may contain ERB syntax
+    def self.load_string(string, path)
+      evaled_string = evaluate_erb(string, path)
+      load_yaml(evaled_string, path)
+    end
+    
+    #load the configuration using a string of YAML
+    def self.load_yaml(yaml_string, path)
+      all_configs = convert_yaml_to_hash(yaml_string, path)
+      env_config = extract_enviroment_entry(all_configs, path)
+      load_hash(env_config, path)
+    end
+    
+    #load the configration using a hash just containing the environment
+    def self.load_hash(env_config, path)
+      BackgroundQueue::Config.new(
+        build_primary_server_entry(env_config, path),
+        build_failover_server_entries(env_config, path),
+        build_memcache_array(env_config, path)
+      )
+    end
+    
     
     def self.get_hash_entry(hash, key)
       if hash.has_key?(key)
@@ -25,10 +77,7 @@ module BackgroundQueue
       end
     end
     
-    def self.load_file(path)
-      string = get_string_from_file(path)
-      load_string(string, path)
-    end
+    
     
     def self.evaluate_erb(string, path)
       begin
@@ -40,10 +89,7 @@ module BackgroundQueue
       end
     end
     
-    def self.load_string(string, path)
-      evaled_string = evaluate_erb(string, path)
-      load_yaml(evaled_string, path)
-    end
+    
     
     def self.convert_yaml_to_hash(string, path)
       begin
@@ -76,11 +122,7 @@ module BackgroundQueue
       end
     end
     
-    def self.load_yaml(yaml_string, path)
-      all_configs = convert_yaml_to_hash(yaml_string, path)
-      env_config = extract_enviroment_entry(all_configs, path)
-      load_hash(env_config, path)
-    end
+    
     
     def self.build_primary_server_entry(env_config, path)
       server_entry = BackgroundQueue::Config.get_hash_entry(env_config, :server)
@@ -129,18 +171,14 @@ module BackgroundQueue
       end
     end
     
-    def self.load_hash(env_config, path)
-      BackgroundQueue::Config.new(
-        build_primary_server_entry(env_config, path),
-        build_failover_server_entries(env_config, path),
-        build_memcache_array(env_config, path)
-      )
-    end
-    
-    
+    #the primary {BackgroundQueue::Config::Server}
     attr_reader :server
+    #an array of failover {BackgroundQueue::Config::Server}
     attr_reader :failover
+    #an array of Strings defining memcache server address
     attr_reader :memcache
+    
+    #do not call this directly, use a load_* method
     def initialize(server, failover, memcache)
       @server = server
       @failover = failover
