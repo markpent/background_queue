@@ -1,4 +1,5 @@
-
+require "background_queue/utils"
 require "background_queue/config"
 require "background_queue/command"
+require "background_queue/connection"
 require "background_queue/client"

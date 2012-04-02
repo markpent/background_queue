@@ -56,17 +56,6 @@ module BackgroundQueue
       )
     end
     
-    
-    def self.get_hash_entry(hash, key)
-      if hash.has_key?(key)
-        hash[key]
-      elsif key.kind_of?(String)
-        hash[key.intern]
-      else
-        hash[key.to_s]
-      end
-    end
-    
     def self.get_string_from_file(path)
       if File.exist?(path)
         File.open(path) { |f| f.read }
@@ -125,7 +114,7 @@ module BackgroundQueue
     
     
     def self.build_primary_server_entry(env_config, path)
-      server_entry = BackgroundQueue::Config.get_hash_entry(env_config, :server)
+      server_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :server)
       if server_entry
         begin
           BackgroundQueue::Config::Server.new(server_entry)
@@ -141,7 +130,7 @@ module BackgroundQueue
     
     def self.build_failover_server_entries(env_config, path)
       entries = []
-      failover_entry = BackgroundQueue::Config.get_hash_entry(env_config, :failover)
+      failover_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :failover)
       if failover_entry && failover_entry.kind_of?(Array)
         failover_entry.each_with_index do |entry, index|
           begin
@@ -159,7 +148,7 @@ module BackgroundQueue
     end
     
     def self.build_memcache_array(env_config, path)
-      memcache_entry = BackgroundQueue::Config.get_hash_entry(env_config, :memcache)
+      memcache_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :memcache)
       if memcache_entry && memcache_entry.kind_of?(String)
         memcache_entry.split(',').collect { |entry| entry.strip }.select { |entry| !entry.nil? && entry.length > 0 }
       elsif memcache_entry
@@ -192,10 +181,10 @@ module BackgroundQueue
       
       def initialize(config_entry)
         if config_entry.kind_of?(Hash)
-          @host = BackgroundQueue::Config.get_hash_entry(config_entry, :host)
+          @host = BackgroundQueue::Utils.get_hash_entry(config_entry, :host)
           raise BackgroundQueue::LoadError, "Missing 'host' configuration entry" if @host.nil?
         
-          @port = BackgroundQueue::Config.get_hash_entry(config_entry, :port)
+          @port = BackgroundQueue::Utils.get_hash_entry(config_entry, :port)
           if @port
             @port = @port.to_i
           else

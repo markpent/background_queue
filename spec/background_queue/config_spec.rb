@@ -5,19 +5,7 @@ unless defined? Rails
 end
   
 describe "Config" do
- 
-  context "utility" do
-    it "gets an entry by string" do
-      BackgroundQueue::Config.get_hash_entry({:key=>:value}, "key").should eq(:value)
-      BackgroundQueue::Config.get_hash_entry({'key'=>:value}, "key").should eq(:value)
-    end
-    
-    it "gets an entry by symbol" do
-      BackgroundQueue::Config.get_hash_entry({:key=>:value}, :key).should eq(:value)
-      BackgroundQueue::Config.get_hash_entry({'key'=>:value}, :key).should eq(:value)
-    end
-  end
-  
+
   context "loading" do
     context "from file" do
       it "gets an io from a file that exists" do
