@@ -16,17 +16,17 @@ describe "Connection" do
     
     it "can successfully connect" do
       TCPSocket.should_receive(:open).with(:host, :port) { :socket }
-      subject.connect.should eq(true)
+      subject.__prv__connect.should eq(true)
     end
     
     it "fails when no server to connect to" do
       TCPSocket.should_receive(:open).with(:host, :port) { raise "Unable to connect" }
-      expect { subject.connect }.to raise_error(BackgroundQueue::ConnectionError, "Error Connecting to host:port: Unable to connect")
+      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ConnectionError, "Error Connecting to host:port: Unable to connect")
     end
     
     it "fails if connection times out" do
       Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-      expect { subject.connect }.to raise_error(BackgroundQueue::ConnectionError, "Timeout Connecting to host:port")
+      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ConnectionError, "Timeout Connecting to host:port")
     end
   end
   
@@ -37,7 +37,7 @@ describe "Connection" do
     subject { 
       s = BackgroundQueue::Connection.new(:client, server) 
       TCPSocket.should_receive(:open).with(:host, :port) { socket }
-      s.connect
+      s.__prv__connect
       s
     }
   
@@ -46,7 +46,7 @@ describe "Connection" do
       it "can send data successfully in one go" do
         buf = "some data"
         socket.should_receive(:write).with(buf) { buf.length }
-        subject.send_data(buf).should eq(true)
+        subject.__prv__send_data(buf).should eq(true)
       end
       
       it "can send data successfully in 3 goes" do
@@ -54,7 +54,7 @@ describe "Connection" do
         socket.should_receive(:write).with("12345678") { 2 }
         socket.should_receive(:write).with("345678") { 3 }
         socket.should_receive(:write).with("678") { 3 }
-        subject.send_data(buf).should eq(true)
+        subject.__prv__send_data(buf).should eq(true)
       end
       
       it "fails when underlying network fails" do
@@ -62,13 +62,13 @@ describe "Connection" do
         socket.should_receive(:write).with("12345678") { 2 }
         socket.should_receive(:write).with("345678") { raise "Socket Disconnected" }
         
-        expect { subject.send_data(buf)}.to raise_error(BackgroundQueue::ConnectionError, "Error Sending to host:port: Socket Disconnected")
+        expect { subject.__prv__send_data(buf)}.to raise_error(BackgroundQueue::ConnectionError, "Error Sending to host:port: Socket Disconnected")
       end
       
       it "fails when command times out" do
         init_subject = subject #need to init the subject before forcing timeout
         Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-        expect { init_subject.send_data("data")}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Sending to host:port")
+        expect { init_subject.__prv__send_data("data")}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Sending to host:port")
       end
     end
     
@@ -83,7 +83,7 @@ describe "Connection" do
       
       it "can send data with header" do
         subject.should_receive(:send_data).with(packed_data) { true}
-        subject.send_with_header(data).should eq(true)
+        subject.__prv__send_with_header(data).should eq(true)
       end
       
     end
@@ -91,26 +91,26 @@ describe "Connection" do
     context "receiving data" do
       it "can receive data successfully in one go" do
         socket.should_receive(:recvfrom).with(4) { ["data", nil] }
-        subject.receive_data(4).should eq("data")  
+        subject.__prv__receive_data(4).should eq("data")  
       end
       
       it "can receive data successfully in 3 goes" do
         socket.should_receive(:recvfrom).with(10) { ["0123", nil] }
         socket.should_receive(:recvfrom).with(6) { ["45", nil] }
         socket.should_receive(:recvfrom).with(4) { ["6789", nil] }
-        subject.receive_data(10).should eq("0123456789")  
+        subject.__prv__receive_data(10).should eq("0123456789")  
       end
       
       it "fails when underlying network fails" do
         socket.should_receive(:recvfrom).with(10) { ["0123", nil] }
         socket.should_receive(:recvfrom).with(6) { raise "Socket Disconnected" }
-        expect { subject.receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Error Receiving 10 bytes from host:port: Socket Disconnected")
+        expect { subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Error Receiving 10 bytes from host:port: Socket Disconnected")
       end
       
       it "fails when response times out" do
         init_subject = subject #need to init the subject before forcing timeout
         Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-        expect { init_subject.receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Receiving 10 bytes from host:port")
+        expect { init_subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Receiving 10 bytes from host:port")
       end
     end
     
@@ -124,7 +124,7 @@ describe "Connection" do
         subject.should_receive(:receive_data).with(6) { packed_data[0,6] }
         subject.should_receive(:receive_data).with(4) { packed_data[6,4] }
         
-        subject.receive_with_header().should eq(data)
+        subject.__prv__receive_with_header().should eq(data)
       end
       
     end

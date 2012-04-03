@@ -1,8 +1,9 @@
 require 'timeout'
 
 module BackgroundQueue
-  #a connection to a backend queue server
-  #handles sending the command to the server and recieving the reply
+  #A connection to a backend queue server
+  #Handles sending the command to the server and receiving the reply
+  #For now connections are not pooled/reused
   class Connection
     def initialize(client, server)
       @client = client
@@ -10,6 +11,15 @@ module BackgroundQueue
       @socket = nil
     end
     
+    #send a command to the server
+    def send_command(command)
+      check_connected
+      send_with_header(command.to_buf)
+      response = receive_with_header
+      BackgroundQueue::Command.from_buf(response)
+    end
+    
+    private
     
     def connect
       begin
@@ -84,14 +94,11 @@ module BackgroundQueue
       receive_data(header[1])
     end
     
-    def send_command(command)
-      check_connected
-      send_with_header(command.to_buf)
-      response = receive_with_header
-      BackgroundQueue::Command.from_buf(response)
-    end
+    
   end
   
+  
+  #Error raised when communication failure occurs
   class ConnectionError < Exception
     
   end

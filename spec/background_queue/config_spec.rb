@@ -11,7 +11,7 @@ describe "Config" do
       it "gets an io from a file that exists" do
         File.should_receive(:open).with(:path_that_exists) { :string }
         File.should_receive(:exist?).with(:path_that_exists) { true }
-        BackgroundQueue::Config.get_string_from_file(:path_that_exists).should eq(:string)
+        BackgroundQueue::Config.__prv__get_string_from_file(:path_that_exists).should eq(:string)
       end
       
       it "calls load using string if file exists" do
@@ -24,18 +24,18 @@ describe "Config" do
       it "errors if the file is not found" do
         File.should_receive(:exist?).with(:path_that_does_not_exist) { false }
         File.should_receive(:expand_path).with(:path_that_does_not_exist) { :expanded_path }
-        expect { BackgroundQueue::Config.get_string_from_file(:path_that_does_not_exist) }.to raise_error(BackgroundQueue::LoadError, "Failed to open background_queue configuration file at 'expanded_path'")
+        expect { BackgroundQueue::Config.__prv__get_string_from_file(:path_that_does_not_exist) }.to raise_error(BackgroundQueue::LoadError, "Failed to open background_queue configuration file at 'expanded_path'")
       end
     end
     
     context "using string" do
       it "executes ERB on the string" do
-        BackgroundQueue::Config.evaluate_erb("TEST <%=1+1%>", :path_that_exists).should eq("TEST 2")
+        BackgroundQueue::Config.__prv__evaluate_erb("TEST <%=1+1%>", :path_that_exists).should eq("TEST 2")
       end
       
       it "errors if invalid ERB" do
         File.should_receive(:expand_path).with(:path_that_exists) { :expanded_path }
-        expect { BackgroundQueue::Config.evaluate_erb("TEST <%= aa %>", :path_that_exists)}.to raise_error(BackgroundQueue::LoadError, /Error executing ERB for background_queue configuration file at 'expanded_path':/)
+        expect { BackgroundQueue::Config.__prv__evaluate_erb("TEST <%= aa %>", :path_that_exists)}.to raise_error(BackgroundQueue::LoadError, /Error executing ERB for background_queue configuration file at 'expanded_path':/)
       end
       
       it "calls load yaml if erb evaluates" do
@@ -47,12 +47,12 @@ describe "Config" do
       context "loading as YAML" do
         it "gets a hash object if the string is valid YAML" do
           File.stub(:expand_path) { :expanded_path }
-          BackgroundQueue::Config.convert_yaml_to_hash("a: b", :path_that_exists).should eq( {'a' => 'b'})
+          BackgroundQueue::Config.__prv__convert_yaml_to_hash("a: b", :path_that_exists).should eq( {'a' => 'b'})
         end
          
         it "errors if the YAML is not a hash" do
           File.stub(:expand_path) { :expanded_path }
-          expect { BackgroundQueue::Config.convert_yaml_to_hash("a", :path_that_exists)}.to raise_error(BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at 'expanded_path': Root of config should be a hash of environment configurations")
+          expect { BackgroundQueue::Config.__prv__convert_yaml_to_hash("a", :path_that_exists)}.to raise_error(BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at 'expanded_path': Root of config should be a hash of environment configurations")
         end
       end
       
@@ -60,13 +60,13 @@ describe "Config" do
         it "gets_the_current environment from env" do
           ENV.should_receive(:has_key?).with("RAILS_ENV") { true }
           ENV.should_receive(:[]).with("RAILS_ENV") { :the_env }
-          BackgroundQueue::Config.current_environment.should eq(:the_env)
+          BackgroundQueue::Config.__prv__current_environment.should eq(:the_env)
         end
         
         it "gets_the_current environment from Rails" do
           ENV.should_receive(:has_key?).with("RAILS_ENV") { false }
           Rails.should_receive(:env) { :the_env }
-          BackgroundQueue::Config.current_environment.should eq(:the_env)
+          BackgroundQueue::Config.__prv__current_environment.should eq(:the_env)
         end
         
         context "with development environment" do
@@ -75,12 +75,12 @@ describe "Config" do
           end
           
           it "extracts the correct environment entry from the hash" do
-            BackgroundQueue::Config.extract_enviroment_entry({:development=>:test}, :path_that_exists).should eq(:test)
+            BackgroundQueue::Config.__prv__extract_enviroment_entry({:development=>:test}, :path_that_exists).should eq(:test)
           end
           
           it "errors if the YAML does not define environment entry" do
             File.stub(:expand_path) { :expanded_path }
-            expect { BackgroundQueue::Config.extract_enviroment_entry({:test=>:test}, :path_that_exists).should eq(:test)}.to raise_error(BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at 'expanded_path': missing enviroment root entry: development")
+            expect { BackgroundQueue::Config.__prv__extract_enviroment_entry({:test=>:test}, :path_that_exists).should eq(:test)}.to raise_error(BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at 'expanded_path': missing enviroment root entry: development")
           end
         end
       end
@@ -149,13 +149,13 @@ describe "Config" do
         end
         
         it "creates primary server entry" do
-          entry = BackgroundQueue::Config.build_primary_server_entry({ 'server'=> { :host=>"127.0.0.1" }}, :path_that_exists)
+          entry = BackgroundQueue::Config.__prv__build_primary_server_entry({ 'server'=> { :host=>"127.0.0.1" }}, :path_that_exists)
           entry.host.should eq("127.0.0.1")
         end
         
         it "errors if missing" do
           expect { 
-            BackgroundQueue::Config.build_primary_server_entry({}, :path_that_exists)
+            BackgroundQueue::Config.__prv__build_primary_server_entry({}, :path_that_exists)
           }.to raise_error(
             BackgroundQueue::LoadError, 
             "Missing 'server' entry in background queue configuration file expanded_path"
@@ -164,7 +164,7 @@ describe "Config" do
         
         it "errors if invalid" do
           expect { 
-            BackgroundQueue::Config.build_primary_server_entry({:server=> {}}, :path_that_exists)
+            BackgroundQueue::Config.__prv__build_primary_server_entry({:server=> {}}, :path_that_exists)
           }.to raise_error(
             BackgroundQueue::LoadError, 
             "Error loading 'server' entry from background queue configuration file expanded_path: Missing 'host' configuration entry"
@@ -175,7 +175,7 @@ describe "Config" do
       context "loading failover server entries" do
       
         it "creates failover server entries if defined" do
-          entries = BackgroundQueue::Config.build_failover_server_entries({ :failover=> [{ :host=>"127.0.0.1" }, { :host=>"127.0.0.2" }]}, :path_that_exists)
+          entries = BackgroundQueue::Config.__prv__build_failover_server_entries({ :failover=> [{ :host=>"127.0.0.1" }, { :host=>"127.0.0.2" }]}, :path_that_exists)
           entries.length.should eq(2)
           entries.first.host.should eq("127.0.0.1")
           entries.last.host.should eq("127.0.0.2")
@@ -184,7 +184,7 @@ describe "Config" do
         it "errors if failover entry is invalid" do
           File.stub(:expand_path) { :expanded_path }
           expect { 
-            BackgroundQueue::Config.build_failover_server_entries({ 'failover'=> [{ :host=>"127.0.0.1" }, { }]}, :path_that_exists)
+            BackgroundQueue::Config.__prv__build_failover_server_entries({ 'failover'=> [{ :host=>"127.0.0.1" }, { }]}, :path_that_exists)
           }.to raise_error(
             BackgroundQueue::LoadError, 
             "Error loading 'failover' entry (2) from background queue configuration file expanded_path: Missing 'host' configuration entry"
@@ -195,7 +195,7 @@ describe "Config" do
       
       context "loading memcache server" do
         it "loads server from comma separated list" do
-          entries = BackgroundQueue::Config.build_memcache_array({ :memcache=> "127.0.0.1:4000 , 127.0.0.1:4001,127.0.0.1:4002"}, :path_that_exists)
+          entries = BackgroundQueue::Config.__prv__build_memcache_array({ :memcache=> "127.0.0.1:4000 , 127.0.0.1:4001,127.0.0.1:4002"}, :path_that_exists)
           entries.length.should eq(3)
           entries[0].should eq('127.0.0.1:4000')
           entries[1].should eq('127.0.0.1:4001')
@@ -205,7 +205,7 @@ describe "Config" do
         it "errors if missing memcache entry" do
           File.stub(:expand_path) { :expanded_path }
           expect { 
-            entries = BackgroundQueue::Config.build_memcache_array({}, :path_that_exists)
+            entries = BackgroundQueue::Config.__prv__build_memcache_array({}, :path_that_exists)
           }.to raise_error(
             BackgroundQueue::LoadError, 
             "Missing 'memcache' entry in configuration file expanded_path"
@@ -215,7 +215,7 @@ describe "Config" do
         it "errors if memcache entry not String" do
           File.stub(:expand_path) { :expanded_path }
           expect { 
-            entries = BackgroundQueue::Config.build_memcache_array({:memcache=>1}, :path_that_exists)
+            entries = BackgroundQueue::Config.__prv__build_memcache_array({:memcache=>1}, :path_that_exists)
           }.to raise_error(
             BackgroundQueue::LoadError, 
             "Error loading 'memcache' entry in configuration file expanded_path: invalid data type (Fixnum), expecting String (comma separated)"
