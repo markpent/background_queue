@@ -1,6 +1,3 @@
-require "erb"
-require "yaml"
-
 module BackgroundQueue::ClientLib
 
   #The client configuration which is stored as a YAML file containing a root key for each environments configuration, much like database.yml.
@@ -54,12 +51,10 @@ module BackgroundQueue::ClientLib
           begin
             BackgroundQueue::ClientLib::Config::Server.new(server_entry)
           rescue Exception=>e
-            full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-            raise BackgroundQueue::LoadError, "Error loading 'server' entry from background queue configuration file #{full_path}: #{e.message}"
+            raise BackgroundQueue::LoadError, "Error loading 'server' entry from background queue configuration file #{full_path(path)}: #{e.message}"
           end
         else
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Missing 'server' entry in background queue configuration file #{full_path}"
+          raise BackgroundQueue::LoadError, "Missing 'server' entry in background queue configuration file #{full_path(path)}"
         end
       end
       
@@ -71,13 +66,11 @@ module BackgroundQueue::ClientLib
             begin
               entries << BackgroundQueue::ClientLib::Config::Server.new(entry)
             rescue Exception=>e
-              full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-              raise BackgroundQueue::LoadError, "Error loading 'failover' entry (#{index + 1}) from background queue configuration file #{full_path}: #{e.message}"
+              raise BackgroundQueue::LoadError, "Error loading 'failover' entry (#{index + 1}) from background queue configuration file #{full_path(path)}: #{e.message}"
             end
           end
         elsif failover_entry
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Error loading 'failover' entries configuration file #{full_path}: invalid data type (#{failover_entry.class.name}), expecting Array"
+          raise BackgroundQueue::LoadError, "Error loading 'failover' entries configuration file #{full_path(path)}: invalid data type (#{failover_entry.class.name}), expecting Array"
         end
         entries
       end

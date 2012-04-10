@@ -34,13 +34,24 @@ module BackgroundQueue
     class << self
       private
       
+      #nothing more annoying than not understanding where the library thinks path is pointing to...
+      def full_path(path)
+        if path.nil?
+          '<unknown>'
+        else
+          begin
+            File.expand_path(path)
+          rescue
+            '<unknown>'
+          end
+        end
+      end
+      
       def get_string_from_file(path)
         if File.exist?(path)
           File.open(path) { |f| f.read }
         else
-          #nothing more annoying than not understanding where the library thinks path is pointing to...
-          full_path = File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Failed to open background_queue configuration file at '#{full_path}'"
+          raise BackgroundQueue::LoadError, "Failed to open background_queue configuration file at '#{full_path(path)}'"
         end
       end
       
@@ -49,8 +60,7 @@ module BackgroundQueue
           message = ERB.new(string)
           message.result
         rescue Exception=>ex
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Error executing ERB for background_queue configuration file at '#{full_path}': #{ex.message}"
+          raise BackgroundQueue::LoadError, "Error executing ERB for background_queue configuration file at '#{full_path(path)}': #{ex.message}"
         end
       end
       
@@ -62,8 +72,7 @@ module BackgroundQueue
           raise "Root of config should be a hash of environment configurations" unless result.kind_of?(Hash)
           result
         rescue Exception=>ex
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at '#{full_path}': #{ex.message}"
+          raise BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at '#{full_path(path)}': #{ex.message}"
         end
       end
       
@@ -82,8 +91,7 @@ module BackgroundQueue
         elsif all_configs.has_key?(env_str.to_s.intern)
           all_configs[env_str.to_s.intern]
         else
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at '#{full_path}': missing enviroment root entry: #{env_str}"
+          raise BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at '#{full_path(path)}': missing enviroment root entry: #{env_str}"
         end
       end
       
@@ -92,11 +100,9 @@ module BackgroundQueue
         if memcache_entry && memcache_entry.kind_of?(String)
           memcache_entry.split(',').collect { |entry| entry.strip }.select { |entry| !entry.nil? && entry.length > 0 }
         elsif memcache_entry
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Error loading 'memcache' entry in configuration file #{full_path}: invalid data type (#{memcache_entry.class.name}), expecting String (comma separated)"
+          raise BackgroundQueue::LoadError, "Error loading 'memcache' entry in configuration file #{full_path(path)}: invalid data type (#{memcache_entry.class.name}), expecting String (comma separated)"
         else
-          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
-          raise BackgroundQueue::LoadError, "Missing 'memcache' entry in configuration file #{full_path}"
+          raise BackgroundQueue::LoadError, "Missing 'memcache' entry in configuration file #{full_path(path)}"
         end
       end
     end
