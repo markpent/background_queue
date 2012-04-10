@@ -1,6 +1,6 @@
 require 'timeout'
 
-module BackgroundQueue
+module BackgroundQueue::ClientLib
   #A connection to a backend queue server
   #Handles sending the command to the server and receiving the reply
   #For now connections are not pooled/reused
@@ -16,7 +16,7 @@ module BackgroundQueue
       check_connected
       send_with_header(command.to_buf)
       response = receive_with_header
-      BackgroundQueue::Command.from_buf(response)
+      BackgroundQueue::ClientLib::Command.from_buf(response)
     end
     
     private
@@ -28,9 +28,9 @@ module BackgroundQueue
           true
         }
       rescue Timeout::Error
-        raise BackgroundQueue::ConnectionError, "Timeout Connecting to #{@server.host}:#{@server.port}"
+        raise BackgroundQueue::ClientLib::ConnectionError, "Timeout Connecting to #{@server.host}:#{@server.port}"
       rescue Exception=>e
-        raise BackgroundQueue::ConnectionError, "Error Connecting to #{@server.host}:#{@server.port}: #{e.message}"
+        raise BackgroundQueue::ClientLib::ConnectionError, "Error Connecting to #{@server.host}:#{@server.port}: #{e.message}"
       end
     end
     
@@ -51,9 +51,9 @@ module BackgroundQueue
             end    
           }
         rescue Timeout::Error
-          raise BackgroundQueue::ConnectionError, "Timeout Sending to #{@server.host}:#{@server.port}"
+          raise BackgroundQueue::ClientLib::ConnectionError, "Timeout Sending to #{@server.host}:#{@server.port}"
         rescue Exception=>e
-          raise BackgroundQueue::ConnectionError, "Error Sending to #{@server.host}:#{@server.port}: #{e.message}"
+          raise BackgroundQueue::ClientLib::ConnectionError, "Error Sending to #{@server.host}:#{@server.port}: #{e.message}"
         end
       end
       true
@@ -65,7 +65,7 @@ module BackgroundQueue
     end
     
     def send_with_header(data)
-      send_data(BackgroundQueue::Connection.add_header(data))
+      send_data(BackgroundQueue::ClientLib::Connection.add_header(data))
     end
     
     def receive_data(length)
@@ -81,9 +81,9 @@ module BackgroundQueue
             amt_read += tbuf.length
           }
         rescue Timeout::Error
-          raise BackgroundQueue::ConnectionError, "Timeout Receiving #{length} bytes from #{@server.host}:#{@server.port}"
+          raise BackgroundQueue::ClientLib::ConnectionError, "Timeout Receiving #{length} bytes from #{@server.host}:#{@server.port}"
         rescue Exception=>e
-          raise BackgroundQueue::ConnectionError, "Error Receiving #{length} bytes from #{@server.host}:#{@server.port}: #{e.message}"
+          raise BackgroundQueue::ClientLib::ConnectionError, "Error Receiving #{length} bytes from #{@server.host}:#{@server.port}: #{e.message}"
         end
       end
       sbuf

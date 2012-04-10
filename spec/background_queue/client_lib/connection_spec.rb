@@ -1,4 +1,4 @@
-require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
+require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
   
 describe "Connection" do
 
@@ -12,7 +12,7 @@ describe "Connection" do
 
   context "connecting" do
     
-    subject { BackgroundQueue::Connection.new(:client, server) }
+    subject { BackgroundQueue::ClientLib::Connection.new(:client, server) }
     
     it "can successfully connect" do
       TCPSocket.should_receive(:open).with(:host, :port) { :socket }
@@ -21,12 +21,12 @@ describe "Connection" do
     
     it "fails when no server to connect to" do
       TCPSocket.should_receive(:open).with(:host, :port) { raise "Unable to connect" }
-      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ConnectionError, "Error Connecting to host:port: Unable to connect")
+      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Error Connecting to host:port: Unable to connect")
     end
     
     it "fails if connection times out" do
       Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ConnectionError, "Timeout Connecting to host:port")
+      expect { subject.__prv__connect }.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Timeout Connecting to host:port")
     end
   end
   
@@ -35,7 +35,7 @@ describe "Connection" do
     let(:socket) {  stub() } 
       
     subject { 
-      s = BackgroundQueue::Connection.new(:client, server) 
+      s = BackgroundQueue::ClientLib::Connection.new(:client, server) 
       TCPSocket.should_receive(:open).with(:host, :port) { socket }
       s.__prv__connect
       s
@@ -62,13 +62,13 @@ describe "Connection" do
         socket.should_receive(:write).with("12345678") { 2 }
         socket.should_receive(:write).with("345678") { raise "Socket Disconnected" }
         
-        expect { subject.__prv__send_data(buf)}.to raise_error(BackgroundQueue::ConnectionError, "Error Sending to host:port: Socket Disconnected")
+        expect { subject.__prv__send_data(buf)}.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Error Sending to host:port: Socket Disconnected")
       end
       
       it "fails when command times out" do
         init_subject = subject #need to init the subject before forcing timeout
         Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-        expect { init_subject.__prv__send_data("data")}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Sending to host:port")
+        expect { init_subject.__prv__send_data("data")}.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Timeout Sending to host:port")
       end
     end
     
@@ -78,7 +78,7 @@ describe "Connection" do
       let(:packed_data) { [1,4,data].pack("SLZ4") }
       
       it "can pack the header onto the data" do
-        BackgroundQueue::Connection.add_header(data).should eq(packed_data)
+        BackgroundQueue::ClientLib::Connection.add_header(data).should eq(packed_data)
       end
       
       it "can send data with header" do
@@ -104,13 +104,13 @@ describe "Connection" do
       it "fails when underlying network fails" do
         socket.should_receive(:recvfrom).with(10) { ["0123", nil] }
         socket.should_receive(:recvfrom).with(6) { raise "Socket Disconnected" }
-        expect { subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Error Receiving 10 bytes from host:port: Socket Disconnected")
+        expect { subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Error Receiving 10 bytes from host:port: Socket Disconnected")
       end
       
       it "fails when response times out" do
         init_subject = subject #need to init the subject before forcing timeout
         Timeout.should_receive(:timeout).with(any_args) { raise Timeout::Error }  
-        expect { init_subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ConnectionError, "Timeout Receiving 10 bytes from host:port")
+        expect { init_subject.__prv__receive_data(10)}.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Timeout Receiving 10 bytes from host:port")
       end
     end
     
@@ -133,7 +133,7 @@ describe "Connection" do
   
   context "sending command" do
     
-    subject { BackgroundQueue::Connection.new(:client, server) }
+    subject { BackgroundQueue::ClientLib::Connection.new(:client, server) }
     let(:send_command) { stub({:to_buf=>:data}) }
 
     it "can successfully send command" do
@@ -141,28 +141,28 @@ describe "Connection" do
       subject.stub(:check_connected) { true }
       subject.should_receive(:send_with_header).with(:data) { true }
       subject.should_receive(:receive_with_header).with(no_args) { :receive_response }
-      BackgroundQueue::Command.should_receive(:from_buf).with(:receive_response) { :command_response }
+      BackgroundQueue::ClientLib::Command.should_receive(:from_buf).with(:receive_response) { :command_response }
       
       subject.send_command(send_command).should eq(:command_response)
     end
     
     it "fails if unable to connect" do
       TCPSocket.should_receive(:open).with(:host, :port) { raise "Unable to connect" }
-      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ConnectionError, "Error Connecting to host:port: Unable to connect")
+      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Error Connecting to host:port: Unable to connect")
     end
     
     it "fails if unable to send data" do
       subject.stub(:check_connected) { true }
-      subject.should_receive(:send_with_header).with(:data) { raise BackgroundQueue::ConnectionError, "Send Error" }
-      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ConnectionError, "Send Error")
+      subject.should_receive(:send_with_header).with(:data) { raise BackgroundQueue::ClientLib::ConnectionError, "Send Error" }
+      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Send Error")
 
     end
     
     it "fails if unable to recieve response" do
       subject.stub(:check_connected) { true }
       subject.should_receive(:send_with_header).with(:data) { true }
-      subject.should_receive(:receive_with_header).with(no_args) { raise BackgroundQueue::ConnectionError, "Receive Error" }
-      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ConnectionError, "Receive Error")
+      subject.should_receive(:receive_with_header).with(no_args) { raise BackgroundQueue::ClientLib::ConnectionError, "Receive Error" }
+      expect {  subject.send_command(send_command)  }.to raise_error(BackgroundQueue::ClientLib::ConnectionError, "Receive Error")
     end
   end
 

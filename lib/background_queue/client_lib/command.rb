@@ -1,6 +1,6 @@
 require 'json'
 
-module BackgroundQueue
+module BackgroundQueue::ClientLib
 
   #store a command and all its parameters as a hash to be serialized when passing to the server.
   class Command
@@ -53,7 +53,7 @@ module BackgroundQueue
         args = hash_data['a']
         raise "Missing 'o' (options)" if hash_data['o'].nil?
         options = hash_data['o']
-        BackgroundQueue::Command.new(code, options, args)
+        BackgroundQueue::ClientLib::Command.new(code, options, args)
       rescue Exception=>e
         raise InvalidCommand, "Error loading command from buffer: #{e.message}"
       end
