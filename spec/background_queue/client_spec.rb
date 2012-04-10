@@ -1,5 +1,6 @@
 require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
-  
+require 'background_queue'
+
 describe "Client" do
 
   context "initializing" do

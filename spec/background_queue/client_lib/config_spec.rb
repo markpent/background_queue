@@ -1,10 +1,11 @@
 require File.expand_path(File.dirname(__FILE__) + '/../../spec_helper')
+require 'background_queue'
 
 unless defined? Rails
   module Rails; end
 end
   
-describe "Config" do
+describe "Client Config" do
 
   context "using map" do
     context "loading server entry" do
@@ -103,35 +104,7 @@ describe "Config" do
     
     end
     
-    context "loading memcache server" do
-      it "loads server from comma separated list" do
-        entries = BackgroundQueue::ClientLib::Config.__prv__build_memcache_array({ :memcache=> "127.0.0.1:4000 , 127.0.0.1:4001,127.0.0.1:4002"}, :path_that_exists)
-        entries.length.should eq(3)
-        entries[0].should eq('127.0.0.1:4000')
-        entries[1].should eq('127.0.0.1:4001')
-        entries[2].should eq('127.0.0.1:4002')
-      end
     
-      it "errors if missing memcache entry" do
-        File.stub(:expand_path) { :expanded_path }
-        expect { 
-          entries = BackgroundQueue::ClientLib::Config.__prv__build_memcache_array({}, :path_that_exists)
-        }.to raise_error(
-          BackgroundQueue::LoadError, 
-          "Missing 'memcache' entry in configuration file expanded_path"
-        )
-      end
-      
-      it "errors if memcache entry not String" do
-        File.stub(:expand_path) { :expanded_path }
-        expect { 
-          entries = BackgroundQueue::ClientLib::Config.__prv__build_memcache_array({:memcache=>1}, :path_that_exists)
-        }.to raise_error(
-          BackgroundQueue::LoadError, 
-          "Error loading 'memcache' entry in configuration file expanded_path: invalid data type (Fixnum), expecting String (comma separated)"
-        )
-      end
-    end
     
     context "creating Config entry" do
       before do

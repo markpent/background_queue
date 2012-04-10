@@ -86,6 +86,19 @@ module BackgroundQueue
           raise BackgroundQueue::LoadError, "Error loading YAML for background_queue configuration file at '#{full_path}': missing enviroment root entry: #{env_str}"
         end
       end
+      
+      def build_memcache_array(env_config, path)
+        memcache_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :memcache)
+        if memcache_entry && memcache_entry.kind_of?(String)
+          memcache_entry.split(',').collect { |entry| entry.strip }.select { |entry| !entry.nil? && entry.length > 0 }
+        elsif memcache_entry
+          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
+          raise BackgroundQueue::LoadError, "Error loading 'memcache' entry in configuration file #{full_path}: invalid data type (#{memcache_entry.class.name}), expecting String (comma separated)"
+        else
+          full_path = path.nil? ? '<unknown>' : File.expand_path(path)
+          raise BackgroundQueue::LoadError, "Missing 'memcache' entry in configuration file #{full_path}"
+        end
+      end
     end
   end
   
