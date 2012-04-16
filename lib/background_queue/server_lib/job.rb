@@ -1,16 +1,20 @@
 module BackgroundQueue::ServerLib
-  class Job
+  class Job < PriorityQueue
   
-    def priority
-      
+    attr_accessor :id
+    
+    def initialize(id)
+      @id = id
+      super()
+    end
+
+    
+    def ==(other)
+      @id == other.id
     end
     
-    def push(task)
-      
-    end
-    
-    def pop
-      
+    def inspect
+      "#{self.id}"
     end
 
   end

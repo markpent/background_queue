@@ -5,6 +5,7 @@ module BackgroundQueue::ServerLib
   
     def initialize
       @queues = []
+      @items = {}
     end
     
     def pop

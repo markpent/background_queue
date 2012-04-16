@@ -2,9 +2,9 @@ require 'thread'
 module BackgroundQueue::ServerLib
   
   class BalancedQueue < PriorityQueue
-    
+    include BackgroundQueue::ServerLib::QueueRegistry
     def initialize
-      @items = {}
+      
       @condvar = ConditionVariable.new
       @mutex = Mutex.new
       super
@@ -12,14 +12,7 @@ module BackgroundQueue::ServerLib
     
     def add_task(task)
       @mutex.synchronize {
-        in_queue, owner = get_owner_queue(task.owner_id)
-        priority_increased, original_priority = add_task_to_owner(owner, task)
-        if !in_queue || priority_increased
-          if in_queue #remove from existing priority queue
-            remove(owner, original_priority)
-          end
-          push(owner)
-        end
+        add_item(task)
         @condvar.signal #wake anything reading from the queue
       }
     end
@@ -27,54 +20,27 @@ module BackgroundQueue::ServerLib
     def next_task
       task = nil
       @mutex.synchronize {
-        owner = pop
-        if owner.nil?
+        task = next_item
+        if task.nil?
           @condvar.wait
-        else
-          priority_decreased, original_priority, task = get_task_from_owner(owner)
-          if owner.empty? || priority_decreased
-            remove(owner, original_priority)
-            @items.delete(owner.id) if owner.empty?
-          end
-          unless owner.empty?
-            push(owner)
-          end
         end
       }
       task
     end
     
+    def self.queue_class
+      BackgroundQueue::ServerLib::Owner
+    end
     
     private
     
-    def add_task_to_owner(owner, task)
-      original_priority = owner.priority
-      owner.add_task(task)
-       
-      if original_priority.nil? || original_priority > owner.priority
-        return [true, original_priority]
-      end
-      [false, original_priority]
+    def get_queue_id_from_item(item)
+      item.owner_id
     end
     
-    def get_task_from_owner(owner)
-      original_priority = owner.priority
-      task = owner.next_task
-       
-      if owner.priority.nil? || original_priority < owner.priority
-        return [true, original_priority, task]
-      end
-      [false, original_priority, task]
+    def add_item_to_queue(queue, item)
+      queue.add_item(item)
     end
-    
-    def get_owner_queue(owner_id)
-      owner =  @items[owner_id]
-      return [true, owner] unless owner.nil?
-      owner = BackgroundQueue::ServerLib::Owner.new(owner_id)
-      @items[owner_id] = owner
-      return [false, owner]
-    end
-    
     
 
   end

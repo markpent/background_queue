@@ -1,6 +1,7 @@
 module BackgroundQueue::ServerLib
   
   class Owner < PriorityQueue
+    include BackgroundQueue::ServerLib::QueueRegistry
     
     attr_accessor :id
     
@@ -8,20 +9,7 @@ module BackgroundQueue::ServerLib
       @id = id
       super()
     end
-    
-    def add_task(task)
-      #original_priority = priority
-      #push(task)
-      # 
-      #if original_priority.nil? || original_priority > priority
-      #  return [true, original_priority]
-      #end
-      #[false, original_priority]
-    end
-    
-    def next_task
-      
-    end
+
     
     def ==(other)
       @id == other.id
@@ -30,11 +18,19 @@ module BackgroundQueue::ServerLib
     def inspect
       "#{self.id}"
     end
+
+    def self.queue_class
+      BackgroundQueue::ServerLib::Job
+    end
     
     private
     
-    def build_item(id)
-      
+    def get_queue_id_from_item(item)
+      item.job_id
+    end
+    
+    def add_item_to_queue(queue, item)
+      queue.add_item(item)
     end
     
     
