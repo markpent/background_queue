@@ -4,7 +4,7 @@ module BackgroundQueue::ServerLib
   class BalancedQueue < PriorityQueue
     include BackgroundQueue::ServerLib::QueueRegistry
     def initialize
-      
+      @task_registry = BackgroundQueue::ServerLib::TaskRegistry.new
       @condvar = ConditionVariable.new
       @mutex = Mutex.new
       super
@@ -12,9 +12,19 @@ module BackgroundQueue::ServerLib
     
     def add_task(task)
       @mutex.synchronize {
-        add_item(task)
-        @condvar.signal #wake anything reading from the queue
+        status, existing_task = @task_registry.register(task)
+        if status != :waiting
+          if status == :existing
+            remove_task(existing_task)
+          end
+          add_item(task)
+          @condvar.signal #wake anything reading from the queue
+        end
       }
+    end
+    
+    def remove_task(task)
+      remove_item(task)
     end
     
     def next_task

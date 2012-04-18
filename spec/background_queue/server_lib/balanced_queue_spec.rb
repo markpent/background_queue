@@ -24,10 +24,36 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
   end
   
   context "adding tasks" do
-    it "will signal condition" do
-      ConditionVariable.any_instance.should_receive(:signal)
-      subject.should_receive(:add_item).with(anything) { :does_not_matter }
+    context "with no existing task running" do
+      before do
+        ConditionVariable.any_instance.should_receive(:signal)
+        subject.should_receive(:add_item).with(anything) { :does_not_matter }
+      end
+      
+      it "adds a new task" do
+        BackgroundQueue::ServerLib::TaskRegistry.any_instance.should_receive(:register).with(anything).and_return([:new, nil])
+        subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
+      end
+      
+      it "adds a task with existing id thats not running" do
+        BackgroundQueue::ServerLib::TaskRegistry.any_instance.should_receive(:register).with(anything).and_return([:existing, :existing_task])
+        subject.should_receive(:remove_task).with(:existing_task)
+        subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
+      end
+    end
+    
+    it "adds a task with existing id thats running" do
+      BackgroundQueue::ServerLib::TaskRegistry.any_instance.should_receive(:register).with(anything).and_return([:waiting, nil])
+      subject.should_not_receive(:add_item).with(anything)
       subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
+    end
+   
+  end
+  
+  context "removing tasks" do
+    it "delegates call to queue_registry" do
+      subject.should_receive(:remove_item).with(anything) { :does_not_matter }
+      subject.remove_task(:task_id)
     end
   end
   
