@@ -42,6 +42,22 @@ module BackgroundQueue::ServerLib
       @queues.empty?
     end
     
+    def number_of_priorities
+      @queues.length
+    end
+    
+    def number_if_items_at_priority(priority)
+      q = get_queue_for_priority(priority)
+      return 0 if q.nil?
+      q.length
+    end
+    
+    def peek
+      q = get_next_queue
+      return nil if q.nil?
+      q.first
+    end
+    
     private
     
     def get_queue_for_priority(priority)
