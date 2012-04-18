@@ -8,7 +8,6 @@ module BackgroundQueue::ServerLib
       super()
     end
 
-    
     def ==(other)
       @id == other.id
     end
@@ -17,5 +16,12 @@ module BackgroundQueue::ServerLib
       "#{self.id}"
     end
 
+    def add_item(task)
+      push(task)
+    end
+    
+    def next_item
+      pop
+    end
   end
 end
