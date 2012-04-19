@@ -19,13 +19,14 @@ module BackgroundQueue::ServerLib
     end
     
     def push(item)
-      q = get_queue_for_priority(item.priority)
+      q = get_queue_for_priority(item.priority, true)
       q.push(item)
     end
     
     def remove(item, override_priority=nil)
       override_priority = item.priority if override_priority.nil?
-      q = get_queue_for_priority(override_priority)
+      q = get_queue_for_priority(override_priority, false)
+      raise "unable to get queue at priority #{override_priority} when removing" if q.nil?
       q.delete_if { |q_item| q_item.id == item.id }
       if q.empty?
         remove_queue(q)
@@ -47,7 +48,7 @@ module BackgroundQueue::ServerLib
     end
     
     def number_if_items_at_priority(priority)
-      q = get_queue_for_priority(priority)
+      q = get_queue_for_priority(priority, false)
       return 0 if q.nil?
       q.length
     end
@@ -60,10 +61,11 @@ module BackgroundQueue::ServerLib
     
     private
     
-    def get_queue_for_priority(priority)
+    def get_queue_for_priority(priority, create)
       @queues.each_with_index do |q, idx|
         return q if q.priority == priority
         if q.priority > priority #passed it.. insert here...
+          return nil unless create
           return insert_queue_at_index(priority, idx)
         end
       end

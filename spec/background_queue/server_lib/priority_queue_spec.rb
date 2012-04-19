@@ -31,34 +31,34 @@ describe "Priority Queue" do
     
     
     it "can add a queue to the correct priority index" do
-      q3 = subject.__prv__get_queue_for_priority(3)
+      q3 = subject.__prv__get_queue_for_priority(3, true)
       
       subject.__prv__get_queues.should eq([q3])
       
-      q2 = subject.__prv__get_queue_for_priority(2)
+      q2 = subject.__prv__get_queue_for_priority(2, true)
       subject.__prv__get_queues.should eq([q2, q3])
       
-      q5 = subject.__prv__get_queue_for_priority(5)
+      q5 = subject.__prv__get_queue_for_priority(5, true)
       subject.__prv__get_queues.should eq([q2, q3, q5])
       
-      q4 = subject.__prv__get_queue_for_priority(4)
+      q4 = subject.__prv__get_queue_for_priority(4, true)
       subject.__prv__get_queues.should eq([q2, q3, q4, q5])
     end
     
     it "can get the next priority entry" do
-      subject.__prv__get_queue_for_priority(3)
-      q2 = subject.__prv__get_queue_for_priority(2)
-      subject.__prv__get_queue_for_priority(4)
+      subject.__prv__get_queue_for_priority(3, true)
+      q2 = subject.__prv__get_queue_for_priority(2, true)
+      subject.__prv__get_queue_for_priority(4, true)
       
       subject.__prv__get_next_queue.should eq(q2)
     end
     
     it "can remove the queue entry" do
       
-      q3 = subject.__prv__get_queue_for_priority(3)
-      q2 = subject.__prv__get_queue_for_priority(2)
-      q5 = subject.__prv__get_queue_for_priority(5)
-      q4 = subject.__prv__get_queue_for_priority(4)
+      q3 = subject.__prv__get_queue_for_priority(3, true)
+      q2 = subject.__prv__get_queue_for_priority(2, true)
+      q5 = subject.__prv__get_queue_for_priority(5, true)
+      q4 = subject.__prv__get_queue_for_priority(4, true)
       
       subject.__prv__get_queues.should eq([q2, q3, q4, q5])
       

@@ -17,15 +17,21 @@ module BackgroundQueue::ServerLib
       queue = pop
       unless queue.nil?
         priority_decreased, original_priority, item = remove_item_from_queue(queue, :next)
-        if queue.empty? || priority_decreased
-          remove(queue, original_priority)
+        #if queue.empty? || priority_decreased
+        #  remove(queue, original_priority)
           @items.delete(queue.id) if queue.empty?
-        end
+        #end
         unless queue.empty?
           push(queue)
         end
       end
       item
+    end
+    
+    def remove_item(item)
+      
+      
+      
     end
     
     private
