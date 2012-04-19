@@ -42,7 +42,7 @@ shared_examples "a queue registry" do
       end
     end
       
-    context "adding items" do
+    context "#add_item" do
 
       context "new queue" do
         
@@ -87,7 +87,7 @@ shared_examples "a queue registry" do
       end
     end
     
-    context "getting items" do
+    context "#next_item" do
   
       subject { 
         bg = new_instance
@@ -98,7 +98,7 @@ shared_examples "a queue registry" do
       }
         
       it "will remove the queue if no items left for queue" do
-        subject.should_receive(:get_item_from_queue).with(anything) { [true, 2, :task]}
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
         queue_class.any_instance.stub(:empty?) { true }
            
         subject.next_item
@@ -113,7 +113,7 @@ shared_examples "a queue registry" do
         owner.stub(:priority) { @priority ||= 2 }
         owner.stub(:next_item) { @priority += 1; :task }
         
-        subject.__prv__get_item_from_queue(owner).should eq([true, 2, :task])
+        subject.__prv__remove_item_from_queue(owner, :next).should eq([true, 2, :task])
       end
       
       it "tracks if priority unchanged when removing task" do
@@ -121,11 +121,67 @@ shared_examples "a queue registry" do
         owner.stub(:priority) { @priority ||= 2 }
         owner.stub(:next_item) {:task }
         
-        subject.__prv__get_item_from_queue(owner).should eq([false, 2, :task])
+        subject.__prv__remove_item_from_queue(owner, :next).should eq([false, 2, :task])
       end
       
       it "will lower priority when items left are lower priority" do
-        subject.should_receive(:get_item_from_queue).with(anything) { [true, 2, :task]}
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
+        queue_class.any_instance.stub(:empty?) { false }
+        
+        subject.__prv__get_queue(:owner_id2).last.set_priority(3)
+        
+        #BackgroundQueue::ServerLib::Owner.any_instance.should_receive(:priority) { 3 }
+        
+        subject.next_item
+        subject.__prv__get_queues.should have(1).items
+        subject.__prv__get_queues.first.priority.should eq(3)
+        subject.__prv__get_queues.first.should have(2).items
+      end
+      
+      
+      
+    end
+    
+    
+    context "#remove_item" do
+  
+      subject { 
+        bg = new_instance
+        bg.stub(:get_queue_id_from_item) { |item| item.owner_id} 
+        bg.add_item(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
+        bg.add_item(SimpleTask.new(:owner_id2, :job_id2, :task_id2, 2))
+        bg
+      }
+        
+      it "will remove the queue if no items left for queue" do
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
+        queue_class.any_instance.stub(:empty?) { true }
+           
+        subject.next_item
+        subject.__prv__get_queues.should have(1).items
+        subject.__prv__get_queues.first.priority.should eq(3)
+        #make sure the owner was removed
+        subject.__prv__get_queue(:owner_id2).first.should eq(false)
+      end
+      
+      it "tracks if priority changed when removing item" do
+        owner = double("owner")
+        owner.stub(:priority) { @priority ||= 2 }
+        owner.stub(:next_item) { @priority += 1; :task }
+        
+        subject.__prv__remove_item_from_queue(owner, :next).should eq([true, 2, :task])
+      end
+      
+      it "tracks if priority unchanged when removing task" do
+        owner = double("owner")
+        owner.stub(:priority) { @priority ||= 2 }
+        owner.stub(:next_item) {:task }
+        
+        subject.__prv__remove_item_from_queue(owner, :next).should eq([false, 2, :task])
+      end
+      
+      it "will lower priority when items left are lower priority" do
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
         queue_class.any_instance.stub(:empty?) { false }
         
         subject.__prv__get_queue(:owner_id2).last.set_priority(3)

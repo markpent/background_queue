@@ -16,7 +16,7 @@ module BackgroundQueue::ServerLib
       item = nil
       queue = pop
       unless queue.nil?
-        priority_decreased, original_priority, item = get_item_from_queue(queue)
+        priority_decreased, original_priority, item = remove_item_from_queue(queue, :next)
         if queue.empty? || priority_decreased
           remove(queue, original_priority)
           @items.delete(queue.id) if queue.empty?
@@ -44,7 +44,7 @@ module BackgroundQueue::ServerLib
       [false, original_priority]
     end
     
-    def get_item_from_queue(queue)
+    def remove_item_from_queue(queue, target_item)
       original_priority = queue.priority
       item = queue.next_item
        
