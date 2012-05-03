@@ -5,8 +5,9 @@ require 'background_queue_server'
 describe BackgroundQueue::ServerLib::BalancedQueue do
 
   it_behaves_like "a queue registry" do
-    let(:new_instance) { BackgroundQueue::ServerLib::BalancedQueue.new }
+    let(:new_instance) { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
   end
+  subject {  BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
   
   context "callbacks" do
     it "gets the owner_id from tasks" do
@@ -15,7 +16,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
     
     it "calls add_item to add items to owner" do
       BackgroundQueue::ServerLib::Owner.any_instance.should_receive(:add_item).with(:item)
-      subject.__prv__add_item_to_queue(BackgroundQueue::ServerLib::Owner.new(1), :item)
+      subject.__prv__add_item_to_queue(BackgroundQueue::ServerLib::Owner.new(1, :parent), :item)
     end
     
     it "specifies the owner class as its queue class" do
@@ -61,7 +62,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
     
     it "will wait on condition if queue is empty" do
       ConditionVariable.any_instance.should_receive(:wait)
-      bg = BackgroundQueue::ServerLib::BalancedQueue.new 
+      bg = BackgroundQueue::ServerLib::BalancedQueue.new(:parent)
       bg.next_task.should eq(nil)
     end
     

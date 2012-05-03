@@ -3,8 +3,9 @@ module BackgroundQueue::ServerLib
   
     attr_accessor :id
     
-    def initialize(id)
+    def initialize(id, owner)
       @id = id
+      @owner = owner
       super()
     end
 
@@ -17,6 +18,7 @@ module BackgroundQueue::ServerLib
     end
 
     def add_item(task)
+      task.set_job(self)
       push(task)
     end
     

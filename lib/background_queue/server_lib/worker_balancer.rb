@@ -1,5 +1,5 @@
 module BackgroundQueue::ServerLib
-  class Task
-    
+  class WorkerBalancer
+  
   end
 end

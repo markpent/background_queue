@@ -7,7 +7,7 @@ describe "Queue Integration" do
 
   context "Adding And Removing Tasks" do
     
-    subject { BackgroundQueue::ServerLib::BalancedQueue.new }
+    subject { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
     
     it "single task" do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 2)

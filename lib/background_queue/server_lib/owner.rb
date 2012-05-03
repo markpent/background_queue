@@ -5,8 +5,9 @@ module BackgroundQueue::ServerLib
     
     attr_accessor :id
     
-    def initialize(id)
+    def initialize(id, balanced_queues)
       @id = id
+      @balanced_queues = balanced_queues
       super()
     end
 

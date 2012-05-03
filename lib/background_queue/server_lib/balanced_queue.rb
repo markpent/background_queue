@@ -3,11 +3,12 @@ module BackgroundQueue::ServerLib
   
   class BalancedQueue < PriorityQueue
     include BackgroundQueue::ServerLib::QueueRegistry
-    def initialize
+    def initialize(server)
       @task_registry = BackgroundQueue::ServerLib::TaskRegistry.new
       @condvar = ConditionVariable.new
       @mutex = Mutex.new
-      super
+      @server = server
+      super()
     end
     
     def add_task(task)

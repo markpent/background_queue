@@ -42,7 +42,7 @@ module BackgroundQueue::ServerLib
     private
     
     def create_queue(queue_id)
-      self.class.queue_class.new(queue_id)
+      self.class.queue_class.new(queue_id, self)
     end
     
     def track_priority_when_adding_to_queue(queue, item)
