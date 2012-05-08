@@ -166,79 +166,120 @@ describe BackgroundQueue::ServerLib::Server do
   end
   
   context "#get_pid_path" do
-    xit "will use /var/run if pid i not specified on command line" do
-      
+    it "will use /var/run if pid i not specified on command line" do
+      subject.get_pid_path({:pid_file=>:pid}).should eq(:pid)
     end
     
-    xit "will use the command line path if passed" do
-      
+    it "will use the command line path if passed" do
+      subject.get_pid_path({}).should eq("/var/run/background_queue.pid")
     end
   end
   
   context "#get_pid" do
-    xit "will return the pid if in the pid file and the process is running" do
-      
+    it "will return the pid if in the pid file and the process is running" do
+      f = double("file", :read=>"123")
+      File.should_receive(:open).with(:pid_path).and_yield(f)
+      Process.should_receive(:kill).with(0, 123).and_return(nil)
+      subject.get_pid({:pid_file=>:pid_path}).should eq(123)
     end
     
-    xit "will return nil if the pid file does not exist" do
-      
+    it "will return nil if the pid file does not exist" do
+      File.should_receive(:open).with(:pid_path).and_raise("file not found")
+      subject.get_pid({:pid_file=>:pid_path}).should be_nil
     end
     
-    xit "will return nil if the process is not running" do
-      
+    it "will return nil if the process is not running" do
+      f = double("file", :read=>"123")
+      File.should_receive(:open).with(:pid_path).and_yield(f)
+      Process.should_receive(:kill).with(0, 123).and_raise("not running")
+      subject.get_pid({:pid_file=>:pid_path}).should be_nil
     end
     
-    xit "will return nil if the pid is 0" do
-      
+    it "will return nil if the pid is 0" do
+      f = double("file", :read=>"")
+      File.should_receive(:open).with(:pid_path).and_yield(f)
+      subject.get_pid({:pid_file=>:pid_path}).should be_nil
     end
   end
   
   context "#check_not_running" do
-    xit "will return if the pid is nil" do
-      
+    it "will return if the pid is nil" do
+      subject.should_receive(:get_pid).and_return(nil)
+      subject.check_not_running({})
     end
     
-    xit "will raise an error if the pid is not nil" do
-      
+    it "will raise an error if the pid is not nil" do
+      subject.should_receive(:get_pid).and_return(123)
+      expect { subject.check_not_running({}) }.to raise_exception("Process 123 already running")
     end
   end
   
   context "#kill_pid" do
-    xit "will do nothing if the pid is nil" do
-      
+    it "will do nothing if the pid is nil" do
+      subject.should_receive(:get_pid).and_return(nil)
+      subject.kill_pid({})
     end
     
-    xit "will kill the pid if it exists" do
-      
+    it "will kill the pid if it exists" do
+      subject.should_receive(:get_pid).and_return(123)
+      Process.should_receive(:kill).with(9, 123).and_return(nil)
+      subject.kill_pid({})
     end
   end
   
-  context "write_pid" do
-    xit "will write the pid file with the current process id" do
-      
+  context "#write_pid" do
+    before do
+      Process.should_receive(:pid).and_return(123)
+    end
+    it "will write the pid file with the current process id" do
+      f = double("file")
+      f.should_receive("write").with("123")
+      File.should_receive(:open).with(:pid, "w").and_yield(f)
+      subject.write_pid({:pid_file=>:pid})
     end
     
-    xit "will error if the pid file cannot be opened" do
-      
+    it "will error if the pid file cannot be opened" do
+      File.should_receive(:open).with(:pid, "w").and_raise("permission denied")
+      expect { subject.write_pid({:pid_file=>:pid}) }.to raise_exception("Unable to write to pid file pid: permission denied") 
     end
   end
   
   context "#remove_pid" do
-    xit "will remove the file if it exists" do
-      
+    it "will remove the file if it exists" do
+      File.should_receive(:delete).with(:pid)
+      subject.remove_pid({:pid_file=>:pid})
     end
     
-    xit "will do nothing if the pid file does not exist" do
-      
+    it "will do nothing if the pid file does not exist" do
+      File.should_receive(:delete).with(:pid).and_raise("aaarrrgggghhh")
+      subject.remove_pid({:pid_file=>:pid})
     end
-  end
-  
-  context "#daemonize" do
-    
   end
   
   context "#start" do
-   
+    it "will load configuration, init logging then deamonise" do
+      subject.should_receive(:load_configuration).and_return(nil)
+      subject.should_receive(:init_logging).and_return(nil)
+      subject.should_receive(:check_not_running).and_return(nil)
+      subject.should_receive(:write_pid).and_return(nil)
+      subject.should_receive(:daemonize).and_return(nil)
+      subject.start({:command=>:start})
+    end
     
+    it "will load configuration, init logging then run directly" do
+      subject.should_receive(:load_configuration).and_return(nil)
+      subject.should_receive(:init_logging).and_return(nil)
+      subject.should_receive(:check_not_running).and_return(nil)
+      subject.should_receive(:write_pid).and_return(nil)
+      subject.should_receive(:run).and_return(nil)
+      subject.should_not_receive(:daemonize)
+      subject.start({:command=>:run})
+    end
+    
+    it "will display any error and exit" do
+      subject.should_receive(:load_configuration).and_raise("some_error")
+      STDERR.should_receive(:puts).with("some_error")
+      subject.start({:command=>:run})
+    end
   end
 end

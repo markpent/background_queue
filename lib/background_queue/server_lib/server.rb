@@ -78,5 +78,98 @@ module BackgroundQueue::ServerLib
         raise "Error initializing log file #{path}: #{e.message}"
       end
     end
+    
+    def get_pid_path(options)
+      if options[:pid_file]
+        options[:pid_file]
+      else
+        "/var/run/background_queue.pid"
+      end
+    end
+    
+    def get_pid(options)
+      sPid = nil
+      begin
+        sPid = File.open(get_pid_path(options)) { |f|
+          f.read
+        }
+      rescue
+        return nil
+      end
+      return nil if sPid.nil? || sPid.to_i == 0
+      nPid = sPid.to_i
+      begin
+        Process.kill(0, nPid)
+        return nPid
+      rescue
+        return nil
+      end
+    end
+    
+    def check_not_running(options)
+      proc_id = get_pid(options)
+      raise "Process #{proc_id} already running" unless proc_id.nil?
+      nil
+    end
+    
+    def kill_pid(options)
+      proc_id = get_pid(options)
+      begin
+        Process.kill(9, proc_id) unless proc_id.nil?
+      rescue 
+        #dont care... the process may have died already?
+      end
+    end
+    
+    def write_pid(options)
+      proc_id = Process.pid
+      begin
+        File.open(get_pid_path(options), "w") { |f|
+          f.write(proc_id.to_s)
+        }
+      rescue Exception=>e
+        raise "Unable to write to pid file #{get_pid_path(options)}: #{e.message}"
+      end
+    end
+    
+    def remove_pid(options)
+      begin
+        File.delete(get_pid_path(options))
+      rescue 
+      end
+    end
+    
+    
+    def daemonize(options)
+      fork{
+        stdin = open '/dev/null', 'r'
+        stdout = open '/dev/null', 'w'
+        stderr = open '/dev/null', 'w'
+        STDIN.reopen stdin
+        STDOUT.reopen stdout
+        STDERR.reopen stderr
+        fork{
+          run(options)
+        } and exit!
+      }
+    end
+    
+    def start(options)
+      begin
+        load_configuration(options[:config])
+        init_logging(options[:log_file], options[:log_level])
+        check_not_running(options)
+        write_pid(options)
+        if options[:command] == :start
+          daemonize(options)
+        elsif options[:command] == :run
+          run(options)
+        else
+          raise "Unknown Command: #{options[:command]}"
+        end
+      rescue Exception=>e
+        STDERR.puts e.message
+      end
+    end
   end
 end
