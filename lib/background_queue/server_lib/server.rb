@@ -4,6 +4,9 @@ require 'logger'
 module BackgroundQueue::ServerLib
   class Server
     
+    attr_accessor :config
+    
+    
     def process_args(argv)
       argv = argv.clone
       cmd = argv.shift

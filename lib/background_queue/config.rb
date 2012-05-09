@@ -6,6 +6,9 @@ module BackgroundQueue
   #Base class that loads configuration files for client/server
   class Config
     
+    #the default port that is used if the configuration does not specify a port
+    DEFAULT_PORT = 2222
+    
     #load the configuration using a file path
     def self.load_file(path)
       string = get_string_from_file(path)

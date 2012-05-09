@@ -22,10 +22,7 @@ module BackgroundQueue::ClientLib
   #         host: 192.168.3.58
   #     memcache: 192.168.3.1:9999, 192.168.3.3:9999
   class Config < BackgroundQueue::Config
-    
-    #the default port that is used if the configuration does not specify a port
-    DEFAULT_PORT = 2222
-    
+
     #the primary {BackgroundQueue::Config::Server}
     attr_reader :server
     #an array of failover {BackgroundQueue::Config::Server}
@@ -100,7 +97,7 @@ module BackgroundQueue::ClientLib
           if @port
             @port = @port.to_i
           else
-            @port = DEFAULT_PORT 
+            @port = BackgroundQueue::Config::DEFAULT_PORT 
           end
         else
           raise BackgroundQueue::LoadError, "Invalid data type (#{config_entry.class.name}), expecting Hash"

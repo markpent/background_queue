@@ -13,4 +13,6 @@ group :development do
   gem "rdoc", "~> 3.12"
   gem "bundler", "~> 1.0.0"
   gem "redcarpet", "~>2.1.1"
+  gem "eventmachine", "~>0.12.10"
+  gem "ipaddress", "~> 0.8.0"
 end

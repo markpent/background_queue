@@ -1,4 +1,5 @@
 require 'uri'
+require 'ipaddress'
 
 module BackgroundQueue::ServerLib
 
@@ -8,11 +9,17 @@ module BackgroundQueue::ServerLib
   #=======
   #
   #   development:
+  #     address: 
+  #       host: 127.0.0.1
+  #       port: 3000
   #     workers: 
   #       - http://127.0.0.1:801/background_queue
   #     memcache: 127.0.0.1:9999
   #     secret: this_is_used_to_make_sure_it_is_secure
   #   production:
+  #     address: 
+  #       host: 0.0.0.0
+  #       port: 3000
   #     workers: 
   #       - http://192.168.3.1:801/background_queue
   #       - http://192.168.3.2:801/background_queue
@@ -30,12 +37,16 @@ module BackgroundQueue::ServerLib
     #an array of Strings defining memcache server address
     attr_reader :memcache
     
+    #the address to listen on
+    attr_reader :address
+    
     #load the configration using a hash just containing the environment
     def self.load_hash(env_config, path)
       BackgroundQueue::ServerLib::Config.new(
         build_worker_entries(env_config, path),
         get_secret_entry(env_config, path),
-        build_memcache_array(env_config, path)
+        build_memcache_array(env_config, path),
+        get_address_entry(env_config, path),
       )
     end
     
@@ -75,14 +86,67 @@ module BackgroundQueue::ServerLib
           raise BackgroundQueue::LoadError, "Missing 'secret' entry in background queue server configuration file #{full_path(path)}"
         end
       end
+      
+      def get_address_entry(env_config, path)
+        begin
+          BackgroundQueue::ServerLib::Config::Address.new(BackgroundQueue::Utils.get_hash_entry(env_config, :address))
+        rescue Exception=>e
+          raise BackgroundQueue::LoadError, "Error loading 'address' entry in background queue server configuration file #{full_path(path)}: #{e.message}"
+        end
+      end
     end
     
     
     #do not call this directly, use a load_* method
-    def initialize(workers, secret, memcache)
+    def initialize(workers, secret, memcache, address)
       @workers = workers
       @secret = secret
       @memcache = memcache
+      @address = address
+    end
+    
+    class Address
+      attr_reader :host
+      attr_reader :port
+      
+      
+      def initialize(config_entry)
+        if config_entry.nil? 
+          @host = "0.0.0.0"
+          @port = BackgroundQueue::Config::DEFAULT_PORT
+        else
+          port = BackgroundQueue::Utils.get_hash_entry(config_entry, :port)
+          if port.nil?
+            @port = BackgroundQueue::Config::DEFAULT_PORT
+          elsif port.kind_of?(Numeric)
+            @port = port.to_i
+          elsif port.kind_of?(String)
+            if port.to_s.strip == port.to_s.to_i.to_s
+              @port = port.to_i
+            else
+              raise "Invalid port: #{port}"
+            end
+          else
+            raise "Invalid port: should be number or string"
+          end
+          if @port <= 0
+            raise "Invalid port: must be greater then zero"
+          end
+          host = BackgroundQueue::Utils.get_hash_entry(config_entry, :host)
+          if host.nil?
+            @host = "0.0.0.0"
+          elsif host.kind_of?(String)
+            if IPAddress.valid? host
+              @host = host
+            else
+              raise "Invalid host: #{host}"
+            end
+          else
+            raise "Invalid host: should be string"
+          end
+        end
+      end
+      
     end
     
     #A server entry in the configuration

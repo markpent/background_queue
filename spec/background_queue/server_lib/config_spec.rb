@@ -89,6 +89,45 @@ describe "Server Config" do
       end
     end
     
+    context "loading listen entry" do
+      it "defaults to 0.0.0.0:#{BackgroundQueue::Config::DEFAULT_PORT} if missing" do
+        entry = BackgroundQueue::ServerLib::Config::Address.new(nil)
+        entry.host.should eq("0.0.0.0")
+        entry.port.should eq(BackgroundQueue::Config::DEFAULT_PORT)
+      end
+      
+      it "defaults to 0.0.0.0 if host missing" do
+        entry = BackgroundQueue::ServerLib::Config::Address.new({:port=>3001})
+        entry.host.should eq("0.0.0.0")
+        entry.port.should eq(3001)
+      end
+      
+      it "defaults to port #{BackgroundQueue::Config::DEFAULT_PORT}" do
+        entry = BackgroundQueue::ServerLib::Config::Address.new({:host=>"127.0.0.1"})
+        entry.host.should eq("127.0.0.1")
+        entry.port.should eq(BackgroundQueue::Config::DEFAULT_PORT)
+      end
+      
+      it "errors if the host is invalid ap address" do
+        expect { BackgroundQueue::ServerLib::Config::Address.new({:host=>"x.y.z"}) }.to raise_exception("Invalid host: x.y.z")
+      end
+      
+      it "errors if the port is an invalid number" do
+        expect { BackgroundQueue::ServerLib::Config::Address.new({:port=>"dsfg"}) }.to raise_exception("Invalid port: dsfg")
+      end
+      
+      it "wraps the configuration file path in errors" do
+        File.stub(:expand_path) { :expanded_path }
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_address_entry({:address=>{:host=>"x.y.z"}}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'address' entry in background queue server configuration file expanded_path: Invalid host: x.y.z"
+        )
+      end
+      
+    end
+    
 
     context "creating Config entry" do
       before do
