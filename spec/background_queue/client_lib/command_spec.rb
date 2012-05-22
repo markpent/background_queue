@@ -5,7 +5,7 @@ describe "Command" do
 
   context "add_task" do
     it "creates valid command" do
-      cmd = BackgroundQueue::ClientLib::Command.add_task_command(:worker, :owner_id, :job_id, :task_id, {:a=>:b}, {:c=>:d} )
+      cmd = BackgroundQueue::ClientLib::Command.add_task_command(:worker, :owner_id, :job_id, :task_id, 1, {:a=>:b}, {:c=>:d} )
       cmd.code.should eq(:add_task)
       cmd.options[:c].should eq(:d)
       cmd.args[:worker].should eq(:worker)
@@ -19,7 +19,7 @@ describe "Command" do
   
   context "add_tasks" do
     it "creates valid command" do
-      cmd = BackgroundQueue::ClientLib::Command.add_tasks_command(:worker, :owner_id, :job_id, [[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], {:shared=>:param}, {:c=>:d} )
+      cmd = BackgroundQueue::ClientLib::Command.add_tasks_command(:worker, :owner_id, :job_id, [[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], 1, {:shared=>:param}, {:c=>:d} )
       cmd.code.should eq(:add_tasks)
       cmd.options[:c].should eq(:d)
       cmd.args[:worker].should eq(:worker)
@@ -37,28 +37,29 @@ describe "Command" do
     
     it "fails if no tasks are defined" do
       expect {
-       cmd = BackgroundQueue::ClientLib::Command.add_tasks_command(:worker, :owner_id, :job_id, [], {:shared=>:param}, {:c=>:d} )
+       cmd = BackgroundQueue::ClientLib::Command.add_tasks_command(:worker, :owner_id, :job_id, [], 1, {:shared=>:param}, {:c=>:d} )
       }.to raise_exception(BackgroundQueue::InvalidCommand, "No Tasks In List")
     end
   end
   
   
-  context "remove_tasks" do
-    it "creates valid command" do
-      cmd = BackgroundQueue::ClientLib::Command.remove_tasks_command([:task1_id,:task2_id], {:c=>:d} )
-      cmd.code.should eq(:remove_tasks)
-      cmd.options[:c].should eq(:d)
-      cmd.args[:tasks].length.should eq(2)
-      cmd.args[:tasks][0].should eq(:task1_id)
-      cmd.args[:tasks][1].should eq(:task2_id)
-    end
-    
-    it "fails if no tasks are defined" do
-      expect {
-       cmd = BackgroundQueue::ClientLib::Command.remove_tasks_command([], {:c=>:d} )
-      }.to raise_exception(BackgroundQueue::InvalidCommand, "No Tasks In List")
-    end
-  end
+  #i cant see why this would be needed.... will add back if needed
+  #context "remove_tasks" do
+  #  it "creates valid command" do
+  #    cmd = BackgroundQueue::ClientLib::Command.remove_tasks_command([:task1_id,:task2_id], {:c=>:d} )
+  #    cmd.code.should eq(:remove_tasks)
+  #    cmd.options[:c].should eq(:d)
+  #    cmd.args[:tasks].length.should eq(2)
+  #    cmd.args[:tasks][0].should eq(:task1_id)
+  #    cmd.args[:tasks][1].should eq(:task2_id)
+  #  end
+  #  
+  #  it "fails if no tasks are defined" do
+  #    expect {
+  #     cmd = BackgroundQueue::ClientLib::Command.remove_tasks_command([], {:c=>:d} )
+  #    }.to raise_exception(BackgroundQueue::InvalidCommand, "No Tasks In List")
+  #  end
+  #end
   
 
 end

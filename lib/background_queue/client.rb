@@ -20,10 +20,11 @@ module BackgroundQueue
       send_command(BackgroundQueue::ClientLib::Command.add_tasks_command(worker, owner_id, job_id, tasks, shared_parameters, options ))
     end
     
+    #removed for now
     #remove tasks from the background queue
-    def remove_tasks(tasks, options={})
-      send_command(BackgroundQueue::ClientLib::Command.remove_tasks_command(tasks, options))
-    end
+    #def remove_tasks(tasks, options={})
+    #  send_command(BackgroundQueue::ClientLib::Command.remove_tasks_command(tasks, options))
+    #end
     
     
     private

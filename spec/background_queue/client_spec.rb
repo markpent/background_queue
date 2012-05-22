@@ -63,9 +63,9 @@ describe "Client" do
         subject.add_tasks(:worker, :owner_id, :job_id, :tasks, {}, {} ).should eq(true)
       end
       
-      it "can build and send a remove task command" do
-        subject.remove_tasks(:tasks, {}).should eq(true)
-      end
+      #it "can build and send a remove task command" do
+      #  subject.remove_tasks(:tasks, {}).should eq(true)
+      #end
       
     end
   end

@@ -6,7 +6,7 @@ describe "Command" do
   
   context "serialization" do
     it "can reload from serialized format" do
-      cmd = BackgroundQueue::ClientLib::Command.add_task_command(:worker, :owner_id, :job_id, :task_id, {:a=>:b}, {:c=>:d} )
+      cmd = BackgroundQueue::ClientLib::Command.add_task_command(:worker, :owner_id, :job_id, :task_id, 1, {:a=>:b}, {:c=>:d} )
       serialized = cmd.to_buf
 
       cmd = BackgroundQueue::Command.from_buf(serialized)
