@@ -99,7 +99,9 @@ describe BackgroundQueue::ServerLib::WorkerClient do
   context "#set_worker_status" do
     it "calls set_worker_status on the task" do
       task = double("task")
-      task.should_receive(:set_worker_status).with(:status)
+      
+      BackgroundQueue::Utils::AnyKeyHash.should_receive(:new).with(:status).and_return(:kstatus)
+      task.should_receive(:set_worker_status).with(:kstatus)
       subject.set_worker_status(:status, task)
     end
   end

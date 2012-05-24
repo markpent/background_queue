@@ -9,9 +9,10 @@ describe BackgroundQueue::ServerLib::Task do
   context "#set_worker_status" do
     it "calls the jobs set_worker_status" do
       job = double("job")
-      job.should_receive(:set_worker_status).with(:status).and_return(:something)
+      status = {}
+      job.should_receive(:set_worker_status).with({:task_id=>:id, :exclude=>false}).and_return(:something)
       subject.set_job(job)
-      subject.set_worker_status(:status).should eq(:something)
+      subject.set_worker_status(status).should eq(:something)
     end
   end
   

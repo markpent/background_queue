@@ -29,4 +29,8 @@ class SimpleTask
   def set_job(job)
     @job = job
   end
+  
+  def is_excluded_from_count?
+    @options[:exclude] == true
+  end
 end

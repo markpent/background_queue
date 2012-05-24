@@ -33,8 +33,14 @@ module BackgroundQueue::ServerLib
       @job = job
     end
     
+    def is_excluded_from_count?
+      @options[:exclude] == true
+    end
+    
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?
+      status[:task_id] = self.id
+      status[:exclude] = self.is_excluded_from_count?
       @job.set_worker_status(status)
     end
   end

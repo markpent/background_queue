@@ -67,7 +67,8 @@ module BackgroundQueue::ServerLib
     end
     
     def set_worker_status(status, task)
-      task.set_worker_status(status)
+      status_map = BackgroundQueue::Utils::AnyKeyHash.new(status)
+      task.set_worker_status(status_map)
     end
     
   end
