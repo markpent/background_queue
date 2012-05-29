@@ -22,12 +22,20 @@ class SimpleTask
     @running
   end
   
+  def synchronous?
+    @options[:synchronous] == true
+  end
+  
   def domain
     @options[:domain]
   end
   
   def set_job(job)
     @job = job
+  end
+  
+  def get_job
+    @job
   end
   
   def is_excluded_from_count?

@@ -24,6 +24,10 @@ module BackgroundQueue::ServerLib
       BackgroundQueue::ServerLib::Job
     end
     
+    def synchronous?
+      false
+    end
+
     private
     
     def get_queue_id_from_item(item)

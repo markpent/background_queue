@@ -100,12 +100,11 @@ shared_examples "a queue registry" do
         bg
       }
         
-      it "will remove the queue if no items left for queue" do
+      it "will add to stalled items if no items left for queue" do
         subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
         queue_class.any_instance.stub(:empty?) { true }
-           
+        subject.should_receive(:stall_queue)
         subject.__prv__get_queue_for_priority(2, false)
-        
         subject.next_item.should eq(:task)
         subject.__prv__get_queues.should have(1).items
         subject.__prv__get_queues.first.priority.should eq(3)
@@ -126,7 +125,6 @@ shared_examples "a queue registry" do
         subject.__prv__get_queues.first.priority.should eq(3)
         subject.__prv__get_queues.first.should have(2).items
       end
-      
       
       
     end
@@ -211,9 +209,8 @@ shared_examples "a queue registry" do
         subject.__prv__get_queues.first.priority.should eq(3)
         subject.__prv__get_queues.first.should have(2).items
       end
-      
-      
-      
     end
   end
+  
+  
 end

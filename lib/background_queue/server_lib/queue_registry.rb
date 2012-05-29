@@ -4,7 +4,7 @@ module BackgroundQueue::ServerLib
     def add_item(item)
       in_queue, queue = get_queue(get_queue_id_from_item(item), true)
       priority_increased, original_priority = track_priority_when_adding_to_queue(queue, item)
-      if !in_queue || priority_increased
+      if !queue.stalled? && (!in_queue || priority_increased)
         if in_queue #remove from existing priority queue
           remove(queue, original_priority)
         end
@@ -17,8 +17,12 @@ module BackgroundQueue::ServerLib
       queue = pop
       unless queue.nil?
         priority_decreased, original_priority, item = remove_item_from_queue(queue, :next)
-        if queue.empty?
+        
+        # some items must run synchronously, so we dont want to add it back until the task is finished.
+        # if the queue it empty we still want to keep it there until the task is finished, incase the running task queues more tasks against the job.
+        if queue.empty? || queue.synchronous?
           @items.delete(queue.id) 
+          stall_queue(queue)
         else
           push(queue)
         end
@@ -37,6 +41,13 @@ module BackgroundQueue::ServerLib
         remove(queue, original_priority)
         push(queue)
       end
+    end
+    
+    def finish_item(item)
+      in_queue, queue = get_queue(get_queue_id_from_item(item), false)
+      raise "Queue #{get_queue_id_from_item(item)} unavailble when finishing item" if queue.nil?
+      queue.finish_item(item)
+      resume_queue(queue)
     end
     
     private
@@ -72,11 +83,36 @@ module BackgroundQueue::ServerLib
     
     def get_queue(queue_id, create)
       queue =  @items[queue_id]
+      queue = @stalled_items[queue_id] if queue.nil?
       return [true, queue] unless queue.nil?
       return [false, nil] unless create
       queue = create_queue(queue_id) #BackgroundQueue::ServerLib::Owner.new(owner_id)
       @items[queue_id] = queue
       return [false, queue]
+    end
+    
+    def stall_queue(queue)
+      queue.stalled = true
+      @stalled_items[queue.id] = queue
+    end
+    
+    def resume_queue(queue)
+      if queue.stalled?
+        @stalled_items.delete(queue.id) 
+        unless queue.empty? 
+          queue.stalled = false
+          push(queue)
+        #  puts "returned q: #{queue.inspect}"
+        #else
+        #  puts "q empty"
+        end
+      #else
+      #  puts "q not stalled"
+      end
+    end
+    
+    def stalled_items
+      @stalled_items
     end
     
   end

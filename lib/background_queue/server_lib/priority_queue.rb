@@ -6,6 +6,8 @@ module BackgroundQueue::ServerLib
     def initialize
       @queues = []
       @items = {}
+      @stalled_items = {}
+      @stalled = false
     end
     
     def pop
@@ -37,6 +39,14 @@ module BackgroundQueue::ServerLib
     def priority
       return nil if @queues.empty?
       get_next_queue.priority
+    end
+    
+    def stalled?
+      @stalled
+    end
+    
+    def stalled=(stall)
+      @stalled = stall
     end
     
     def empty?

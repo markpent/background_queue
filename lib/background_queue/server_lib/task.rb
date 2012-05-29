@@ -37,6 +37,10 @@ module BackgroundQueue::ServerLib
       @options[:exclude] == true
     end
     
+    def synchronous?
+      @options[:synchronous] == true
+    end
+    
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?
       status[:task_id] = self.id

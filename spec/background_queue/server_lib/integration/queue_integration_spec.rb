@@ -4,10 +4,11 @@ require 'background_queue_server'
 
 describe "Queue Integration" do
 
+  subject { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
 
   context "Adding And Removing Tasks" do
     
-    subject { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
+    
     
     it "single task" do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 2)
@@ -58,6 +59,36 @@ describe "Queue Integration" do
       subject.next_task.id.should eq(:task3_id) 
     end
   
+  end
+  
+  context "stalled tasks" do
+    it "will not return a task from a synchronous job already running" do
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id2, 3, {:synchronous=>false}))
+      
+      task = subject.next_item
+      task.id.should be(:task_id)
+      subject.next_item.should be_nil
+      subject.finish_item(task)
+      subject.next_item.id.should eq(:task_id2)
+      
+    end
+    
+    it "will add tasks to empty queues that have not finished" do
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
+      task = subject.next_item
+      task2 = SimpleTask.new(:owner_id, :job_id, :task_id2, 3)
+      subject.add_task(task2)
+      
+      task2.get_job.should be(task.get_job)
+      
+      task2.get_job.total_tasks.should eq(2)
+
+      subject.next_item.should be_nil
+      subject.finish_item(task)
+      subject.next_item.id.should eq(:task_id2)
+      
+    end
   end
 
 end
