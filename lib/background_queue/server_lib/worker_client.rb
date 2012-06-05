@@ -2,32 +2,39 @@ require 'net/http'
 require 'json'
 
 module BackgroundQueue::ServerLib
+  #The client to a worker.
+  #Use http to connect to the worker, send the command, and process the streamed response of json encoded status updates.
   class WorkerClient
     def initialize(server)
       @server = server
     end
     
-    def build_request(uri, task, auth)
-      @uri = URI(uri)
-      req = Net::HTTP::Post.new(@uri.path)
-      req.set_form_data({:task=>task.to_json, :auth=>auth})
-      req["host"] = task.domain
-      req
-    end
-    
-    def send_request(worker_config, task, auth)
+    #send a request to the specified worker, passing the task and authenticating using the secret
+    def send_request(worker, task, secret)
       @current_task = task
-      req = build_request(worker_config.url, task, auth)
+      req = build_request(worker.uri, task, secret)
       begin
-        Net::HTTP.start(worker_config.uri.host, worker_config.uri.port) do |server|
+        Net::HTTP.start(worker.uri.host, worker.uri.port) do |server|
           server.request(req) do |response|
             read_response(response, task)
           end
         end
+        true
       rescue Exception=>e
         return false
       end
     end
+    
+    private
+    
+    def build_request(uri, task, secret)
+      req = Net::HTTP::Post.new(uri.path)
+      req.set_form_data({:task=>task.to_json, :auth=>secret})
+      req["host"] = task.domain
+      req
+    end
+    
+    
     
     def read_response(http_response, task)
       if http_response.code == "200"

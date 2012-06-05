@@ -242,13 +242,13 @@ describe BackgroundQueue::ServerLib::Job do
   
   context "integration" do
     it "will track progress" do
-      task0 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id0, 1, {}, {:exclude=>true})
+      task0 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id0, 1, :worker, {}, {:exclude=>true})
       subject.add_item(task0)
-      task1 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id1, 1, {}, {})
+      task1 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id1, 1, :worker, {}, {})
       subject.add_item(task1)
-      task2 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id2, 1, {}, {})
+      task2 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id2, 1, :worker, {}, {})
       subject.add_item(task2)
-      task3 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id3, 1, {}, {})
+      task3 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id3, 1, :worker, {}, {})
       subject.add_item(task3)
       
       subject.total_tasks.should eq(4)

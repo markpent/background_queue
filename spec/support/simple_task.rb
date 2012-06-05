@@ -4,6 +4,7 @@ class SimpleTask
   
   attr_accessor :owner_id
   attr_accessor :job_id
+  attr_accessor :worker
   
   attr_accessor :running
   
@@ -14,6 +15,7 @@ class SimpleTask
     @job_id = job_id
     @id = id
     @priority = priority
+    @worker = :worker
     @running = false
     @options = options
   end

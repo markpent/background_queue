@@ -4,12 +4,17 @@ require 'background_queue_server'
 
 describe "Queue Integration" do
 
-  subject { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
+  let(:server) {
+    svr = double("server")
+    tm = BackgroundQueue::ServerLib::ThreadManager.new(svr, 5)
+    svr.stub(:thread_manager) { tm}
+    svr
+  }
+  
+  subject { BackgroundQueue::ServerLib::BalancedQueue.new(server) }
 
   context "Adding And Removing Tasks" do
-    
-    
-    
+
     it "single task" do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 2)
       subject.add_task(task)

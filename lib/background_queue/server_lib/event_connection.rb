@@ -83,7 +83,7 @@ module BackgroundQueue::ServerLib
     end
     
     def process_add_task_command(command)
-      task = BackgroundQueue::ServerLib.new(command.args[:owner_id], command.args[:job_id], command.args[:task_id], command.args[:priority], command.args[:params], command.options)
+      task = BackgroundQueue::ServerLib::Task.new(command.args[:owner_id], command.args[:job_id], command.args[:task_id], command.args[:priority], command.args[:params], command.options)
       server.task_queue.add_task(task)
       build_simple_command(:result, "ok")
     end
@@ -100,7 +100,7 @@ module BackgroundQueue::ServerLib
         else
           merged_params = shared_params.clone.update(task_data[1])
         end
-        task = BackgroundQueue::ServerLib.new(owner_id, job_id, task_data[0], priority, merged_params, command.options)
+        task = BackgroundQueue::ServerLib::Task.new(owner_id, job_id, task_data[0], priority, merged_params, command.options)
         server.task_queue.add_task(task)
       end
       build_simple_command(:result, "ok")

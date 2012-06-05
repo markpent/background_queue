@@ -7,15 +7,18 @@ module BackgroundQueue::ServerLib
     attr_accessor :owner_id
     attr_accessor :job_id
     
+    attr_accessor :worker
+    
     attr_accessor :running
     
     attr_accessor :options
   
-    def initialize(owner_id, job_id, id, priority, params, options={})
+    def initialize(owner_id, job_id, id, priority, worker, params, options)
       @owner_id = owner_id
       @job_id = job_id
       @id = id
       @priority = priority
+      @worker = worker
       @running = false
       @options = options
       @params = params

@@ -20,6 +20,7 @@ module BackgroundQueue::ServerLib
   #     address: 
   #       host: 0.0.0.0
   #       port: 3000
+  #     connections_per_worker: 10
   #     workers: 
   #       - http://192.168.3.1:801/background_queue
   #       - http://192.168.3.2:801/background_queue
@@ -40,6 +41,9 @@ module BackgroundQueue::ServerLib
     #the address to listen on
     attr_reader :address
     
+    #the number of connections allowed for each active worker
+    attr_reader :connections_per_worker
+    
     #load the configration using a hash just containing the environment
     def self.load_hash(env_config, path)
       BackgroundQueue::ServerLib::Config.new(
@@ -47,6 +51,7 @@ module BackgroundQueue::ServerLib
         get_secret_entry(env_config, path),
         build_memcache_array(env_config, path),
         get_address_entry(env_config, path),
+        get_connections_per_worker_entry(env_config, path)
       )
     end
     
@@ -94,15 +99,27 @@ module BackgroundQueue::ServerLib
           raise BackgroundQueue::LoadError, "Error loading 'address' entry in background queue server configuration file #{full_path(path)}: #{e.message}"
         end
       end
+      
+      def get_connections_per_worker_entry(env_config, path)
+        connections_per_worker_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :connections_per_worker)
+        if connections_per_worker_entry && connections_per_worker_entry.kind_of?(Integer)
+          connections_per_worker_entry
+        elsif connections_per_worker_entry
+          raise BackgroundQueue::LoadError, "Error loading 'connections_per_worker' entry in background queue server configuration file #{full_path(path)}: invalid data type (#{connections_per_worker_entry.class.name}), expecting Integer"
+        else
+          raise BackgroundQueue::LoadError, "Missing 'connections_per_worker' entry in background queue server configuration file #{full_path(path)}"
+        end
+      end
     end
     
     
     #do not call this directly, use a load_* method
-    def initialize(workers, secret, memcache, address)
+    def initialize(workers, secret, memcache, address, connections_per_worker)
       @workers = workers
       @secret = secret
       @memcache = memcache
       @address = address
+      @connections_per_worker = connections_per_worker
     end
     
     class Address

@@ -128,6 +128,33 @@ describe "Server Config" do
       
     end
     
+    context "#get_connections_per_worker_entry" do
+      it "gets the entry" do
+        entry = BackgroundQueue::ServerLib::Config.__prv__get_connections_per_worker_entry({:connections_per_worker=>10}, :path_that_exists)
+        entry.should eq(10)
+      end
+      
+      it "errors if entry is missing" do
+        File.stub(:expand_path) { :expanded_path }
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_connections_per_worker_entry({}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Missing 'connections_per_worker' entry in background queue server configuration file expanded_path"
+        )
+      end
+      
+      it "errors if entry is not an Integer" do
+        File.stub(:expand_path) { :expanded_path }
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_connections_per_worker_entry({:connections_per_worker=>"abc"}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'connections_per_worker' entry in background queue server configuration file expanded_path: invalid data type (String), expecting Integer"
+        )
+      end
+    end
+    
 
     context "creating Config entry" do
       before do
@@ -138,7 +165,8 @@ describe "Server Config" do
         config = BackgroundQueue::ServerLib::Config.load_hash({
             :workers=>['http://127.0.0.1:801/background_queue', 'http://127.0.0.1:802/background_queue'],
             :secret=>'1234567890123456789012345678901234567890',
-            :memcache=> "127.0.0.1:4000"
+            :memcache=> "127.0.0.1:4000",
+            :connections_per_worker=>10
         }, :path_that_exists)
         config.workers.length.should eq(2)
         config.workers.first.uri.port.should eq(801)
@@ -175,6 +203,14 @@ describe "Server Config" do
         )
       end
       
+      it "should fail when missing connections_per_worker" do
+        expect { 
+          config = BackgroundQueue::ServerLib::Config.load_hash({ :workers=>['http://127.0.0.1:802/background_queue'], :secret=>'1234567890123456789012345678901234567890', :memcache=>"127.0.0.1:4000" }, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Missing 'connections_per_worker' entry in background queue server configuration file expanded_path"
+        )
+      end
      
     end
   end

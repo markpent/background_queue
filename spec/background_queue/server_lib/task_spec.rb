@@ -4,7 +4,7 @@ require 'background_queue_server'
 
 describe BackgroundQueue::ServerLib::Task do
 
-  subject { BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id, :priority, :params) }
+  subject { BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id, :priority, :worker, :params, {}) }
   
   context "#set_worker_status" do
     it "calls the jobs set_worker_status" do

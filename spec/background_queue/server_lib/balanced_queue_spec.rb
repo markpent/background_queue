@@ -5,9 +5,22 @@ require 'background_queue_server'
 describe BackgroundQueue::ServerLib::BalancedQueue do
 
   it_behaves_like "a queue registry" do
-    let(:new_instance) { BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
+    let(:server) {
+      double("server", :thread_manager=>:thread_manager)
+    }
+    let(:new_instance) { BackgroundQueue::ServerLib::BalancedQueue.new(server) }
   end
-  subject {  BackgroundQueue::ServerLib::BalancedQueue.new(:parent) }
+  
+  let(:thread_manager) {
+    tm = double("thread_manager")
+    tm.stub(:protect_access).and_yield
+    tm.stub(:control_access).and_yield
+    tm
+  }
+  let(:server) {
+    double("server", :thread_manager=>thread_manager)
+  }
+  subject {  BackgroundQueue::ServerLib::BalancedQueue.new(server) }
   
   context "callbacks" do
     it "gets the owner_id from tasks" do
@@ -27,7 +40,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
   context "adding tasks" do
     context "with no existing task running" do
       before do
-        ConditionVariable.any_instance.should_receive(:signal)
+        thread_manager.should_receive(:signal_access)
         subject.should_receive(:add_item).with(anything) { :does_not_matter }
       end
       
@@ -61,8 +74,8 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
   context "getting tasks" do
     
     it "will wait on condition if queue is empty" do
-      ConditionVariable.any_instance.should_receive(:wait)
-      bg = BackgroundQueue::ServerLib::BalancedQueue.new(:parent)
+      thread_manager.should_receive(:wait_on_access)
+      bg = BackgroundQueue::ServerLib::BalancedQueue.new(server)
       bg.next_task.should eq(nil)
     end
     

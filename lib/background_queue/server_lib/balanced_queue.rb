@@ -8,32 +8,35 @@ module BackgroundQueue::ServerLib
       @condvar = ConditionVariable.new
       @mutex = Mutex.new
       @server = server
+      @thread_manager = server.thread_manager
       super()
     end
     
     def add_task(task)
-      @mutex.synchronize {
+      @thread_manager.protect_access {
         status, existing_task = @task_registry.register(task)
         if status != :waiting
           if status == :existing
             remove_task(existing_task)
           end
           add_item(task)
-          @condvar.signal #wake anything reading from the queue
+          @thread_manager.signal_access #wake anything reading from the queue
         end
       }
     end
     
     def remove_task(task)
-      remove_item(task)
+      @thread_manager.protect_access {
+        remove_item(task)
+      }
     end
     
     def next_task
       task = nil
-      @mutex.synchronize {
+      @thread_manager.control_access {
         task = next_item
         if task.nil?
-          @condvar.wait
+          @thread_manager.wait_on_access
         end
       }
       task
