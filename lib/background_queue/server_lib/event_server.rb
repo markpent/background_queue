@@ -13,6 +13,16 @@ module BackgroundQueue::ServerLib
         end
       end
     end
+    
+    def start_jobs
+      @scheduler = nil
+      EventMachine.run do
+        @scheduler = Rufus::Scheduler::EmScheduler.start_new
+        for job in @server.config.jobs
+          job.schedule(@scheduler, @server)
+        end
+      end
+    end
 
   end
 end

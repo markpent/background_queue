@@ -80,7 +80,7 @@ module BackgroundQueue::ServerLib
     
     def build_poll_task
       if @poll_task.nil?
-        @poll_task = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id, 1, :poll_worker, {}, {})
+        @poll_task = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id, 1, :poll_worker, {}, @server.config.system_task_options)
         @poll_task.set_job(BackgroundQueue::ServerLib::NullJob.new)
       end
       @poll_task

@@ -14,7 +14,6 @@ module BackgroundQueue::ServerLib
   #       port: 3000
   #     workers: 
   #       - http://127.0.0.1:801/background_queue
-  #     memcache: 127.0.0.1:9999
   #     secret: this_is_used_to_make_sure_it_is_secure
   #   production:
   #     address: 
@@ -25,7 +24,14 @@ module BackgroundQueue::ServerLib
   #       - http://192.168.3.1:801/background_queue
   #       - http://192.168.3.2:801/background_queue
   #     secret: this_is_used_to_make_sure_it_is_secure
-  #     memcache: 192.168.3.1:9999, 192.168.3.3:9999
+  #     system_task_options:
+  #       domain: the_default_domain
+  #     jobs
+  #       - cron: "0 22 * * 1-5"
+  #         worker: some_worker
+  #         args: 
+  #           arg1: 22
+  #           arg2: "hello"
   class Config < BackgroundQueue::Config
     
     #the list of workers that are called using http
@@ -35,8 +41,8 @@ module BackgroundQueue::ServerLib
     #the shared secret to make sure the worker is not called directly from the internet
     attr_reader :secret
 
-    #an array of Strings defining memcache server address
-    attr_reader :memcache
+    #an array of scheduled jobs
+    attr_reader :jobs
     
     #the address to listen on
     attr_reader :address
@@ -44,14 +50,18 @@ module BackgroundQueue::ServerLib
     #the number of connections allowed for each active worker
     attr_reader :connections_per_worker
     
+    #used for polling task and jobs. Should include a domain entry if your worker uses domain lookups
+    attr_reader :system_task_options
+    
     #load the configration using a hash just containing the environment
     def self.load_hash(env_config, path)
       BackgroundQueue::ServerLib::Config.new(
         build_worker_entries(env_config, path),
         get_secret_entry(env_config, path),
-        build_memcache_array(env_config, path),
         get_address_entry(env_config, path),
-        get_connections_per_worker_entry(env_config, path)
+        get_connections_per_worker_entry(env_config, path),
+        get_jobs_entry(env_config, path),
+        get_system_task_options_entry(env_config, path)
       )
     end
     
@@ -110,16 +120,45 @@ module BackgroundQueue::ServerLib
           raise BackgroundQueue::LoadError, "Missing 'connections_per_worker' entry in background queue server configuration file #{full_path(path)}"
         end
       end
+      
+      def get_system_task_options_entry(env_config, path)
+        opts_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :system_task_options)
+        return {} if opts_entry.nil?
+        if opts_entry.kind_of?(Hash)
+          opts_entry
+        else
+          raise BackgroundQueue::LoadError, "Error loading 'system_task_options' entry in background queue server configuration file #{full_path(path)}: invalid data type (#{opts_entry.class.name}), expecting Hash (of options)"
+        end
+      end
+
+      def get_jobs_entry(env_config, path)
+        jobs_entry = BackgroundQueue::Utils.get_hash_entry(env_config, :jobs)
+        return [] if jobs_entry.nil?
+        if jobs_entry.kind_of?(Array)
+          retval = []
+          for job in jobs_entry
+            begin
+              retval << BackgroundQueue::ServerLib::Config::Job.new(job)
+            rescue Exception=>e
+              raise BackgroundQueue::LoadError, "Error loading 'jobs' entry in background queue server configuration file #{full_path(path)}: #{e.message}"
+            end
+          end
+          retval
+        else
+          raise BackgroundQueue::LoadError, "Error loading 'jobs' entry in background queue server configuration file #{full_path(path)}: invalid data type (#{jobs_entry.class.name}), expecting Array (of jobs)"
+        end
+      end
     end
     
     
     #do not call this directly, use a load_* method
-    def initialize(workers, secret, memcache, address, connections_per_worker)
+    def initialize(workers, secret, address, connections_per_worker, jobs, system_task_options)
       @workers = workers
       @secret = secret
-      @memcache = memcache
       @address = address
       @connections_per_worker = connections_per_worker
+      @jobs = jobs
+      @system_task_options = system_task_options
     end
     
     class Address
@@ -189,6 +228,73 @@ module BackgroundQueue::ServerLib
       def url
         @uri.to_s
       end
+    end
+    
+    class Job
+      
+      
+      attr_accessor :at
+      attr_accessor :in
+      attr_accessor :cron
+      attr_accessor :every
+      attr_accessor :type
+      attr_accessor :args
+      
+      def initialize(job_entry)
+        raise "Empty Job Entry" if job_entry.nil?
+        @at = BackgroundQueue::Utils.get_hash_entry(job_entry, :at)
+        @in = BackgroundQueue::Utils.get_hash_entry(job_entry, :in)
+        @cron = BackgroundQueue::Utils.get_hash_entry(job_entry, :cron)
+        @every = BackgroundQueue::Utils.get_hash_entry(job_entry, :every)
+        if !@at.nil?
+          @type = :at
+        elsif !@in.nil?
+          @type = :in
+        elsif !@cron.nil?
+          @type=:cron
+        elsif !@every.nil?
+          @type=:every
+        else
+          raise "Job is missing timer designation (at, in or cron)"
+        end
+        @worker = BackgroundQueue::Utils.get_hash_entry(job_entry, :worker)
+        raise "Job is missing worker entry" if @worker.nil?
+        
+        @args = {}
+        args_entry = BackgroundQueue::Utils.get_hash_entry(job_entry, :args)
+        unless args_entry.nil?
+          raise "Invalid 'args' entry in job: expecting Hash of arguments, got #{args_entry.class.name}" unless args_entry.kind_of?(Hash)
+          @args = args_entry
+        end
+        
+      end
+      
+      def schedule(scheduler, server)
+        case @type
+        when :at
+          scheduler.at @at do
+            run(server)
+          end
+        when :in
+          scheduler.in @in do
+            run(server)
+          end
+        when :cron
+          scheduler.cron @cron do
+            run(server)
+          end
+        when :every
+          scheduler.every @every do
+            run(server)
+          end
+        end
+      end
+      
+      def run(server)
+        task = BackgroundQueue::ServerLib::Task.new(:system, :scheduled, self.object_id, 2, @worker, @args, server.config.system_task_options)
+        server.task_queue.add_task(task)
+      end
+      
     end
   end
   

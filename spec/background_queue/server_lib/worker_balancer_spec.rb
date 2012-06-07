@@ -8,7 +8,7 @@ describe BackgroundQueue::ServerLib::WorkerBalancer do
   
   context "#initialize" do
     it "loads the workers from the config" do
-      config = BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2)], :secret, :memcache, :address, :cons)
+      config = BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2)], :secret, :memcache, :address, :cons, :sopts)
       server = double("server", :config=>config)
       
       balancer = BackgroundQueue::ServerLib::WorkerBalancer.new(server)
@@ -20,7 +20,7 @@ describe BackgroundQueue::ServerLib::WorkerBalancer do
   context "#initialized" do
   
     let(:config) {
-      BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2), double("w3", :uri=>:worker_3)], :secret, :memcache, :address, :cons)
+      BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2), double("w3", :uri=>:worker_3)], :secret, :memcache, :address, :cons, :sopts)
     }
     subject { BackgroundQueue::ServerLib::WorkerBalancer.new(double("server", :config=>config)) }
      

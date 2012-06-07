@@ -155,6 +155,166 @@ describe "Server Config" do
       end
     end
     
+    context "#get_system_task_options_entry" do
+      it "gets a hash of options" do
+        opts = BackgroundQueue::ServerLib::Config.__prv__get_system_task_options_entry({:system_task_options=>{:a=>:b}}, :path_that_exists)
+        opts.should eq({:a=>:b})
+      end
+      
+      it "allows no options" do
+        opts = BackgroundQueue::ServerLib::Config.__prv__get_system_task_options_entry({}, :path_that_exists)
+        opts.should eq({})
+      end
+      
+      it "errors if the jobs entry is not a hash" do
+        File.stub(:expand_path) { :expanded_path }
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_system_task_options_entry({:system_task_options=>"abc"}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'system_task_options' entry in background queue server configuration file expanded_path: invalid data type (String), expecting Hash (of options)"
+        )
+      end
+      
+    end
+    
+    
+    context "#get_jobs_entry" do
+      it "gets an array of entries" do
+        BackgroundQueue::ServerLib::Config::Job.should_receive(:new).twice.and_return(:job)
+        jobs = BackgroundQueue::ServerLib::Config.__prv__get_jobs_entry({:jobs=>[:one, :two]}, :path_that_exists)
+        jobs.should eq([:job, :job])
+      end
+      
+      it "allows no jobs" do
+        jobs = BackgroundQueue::ServerLib::Config.__prv__get_jobs_entry({}, :path_that_exists)
+        jobs.should eq([])
+      end
+      
+      it "errors if the jobs entry is not an array" do
+        File.stub(:expand_path) { :expanded_path }
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_jobs_entry({:jobs=>"abc"}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'jobs' entry in background queue server configuration file expanded_path: invalid data type (String), expecting Array (of jobs)"
+        )
+      end
+      
+      it "passes job loading errors on" do
+        File.stub(:expand_path) { :expanded_path }
+        BackgroundQueue::ServerLib::Config::Job.should_receive(:new).and_raise("blah")
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_jobs_entry({:jobs=>[:a]}, :path_that_exists)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'jobs' entry in background queue server configuration file expanded_path: blah"
+        )
+      end
+    end
+    
+    context "#Job.initialize" do
+      it "will load at" do
+        job = BackgroundQueue::ServerLib::Config::Job.new(:at=>"something", :worker=>:abc)
+        job.type.should eq(:at)
+        job.at.should eq("something")
+      end
+      
+      it "will load in" do
+        job = BackgroundQueue::ServerLib::Config::Job.new(:in=>"something", :worker=>:abc)
+        job.type.should eq(:in)
+        job.in.should eq("something")
+      end
+      
+      it "will load cron" do
+        job = BackgroundQueue::ServerLib::Config::Job.new(:cron=>"something", :worker=>:abc)
+        job.type.should eq(:cron)
+        job.cron.should eq("something")
+      end
+      
+      it "will load the arguments" do
+        job = BackgroundQueue::ServerLib::Config::Job.new(:cron=>"something", :worker=>:abc, :args=>{:a=>:b})
+        job.args.should eq({:a=>:b})
+      end
+      
+      it "will error if timer not designated" do
+        expect { 
+          BackgroundQueue::ServerLib::Config::Job.new(:worker=>:abc)
+        }.to raise_error(
+          "Job is missing timer designation (at, in or cron)"
+        )
+      end
+      
+      it "will error if worker not designated" do
+        expect { 
+          BackgroundQueue::ServerLib::Config::Job.new(:at=>"abc")
+        }.to raise_error(
+          "Job is missing worker entry"
+        )
+      end
+      
+      it "will error if the arguments are not a map" do
+        expect { 
+          BackgroundQueue::ServerLib::Config::Job.new(:at=>"abc", :worker=>:abc, :args=>[])
+        }.to raise_error(
+          "Invalid 'args' entry in job: expecting Hash of arguments, got Array"
+        )
+      end
+      
+    end
+    
+    context "#Job.schedule" do
+      subject {
+        job = BackgroundQueue::ServerLib::Config::Job.new(:at=>"something", :worker=>:abc)
+        job.type = nil
+        job.at = nil
+        job
+      }
+      before do
+        subject.should_receive(:run).with(:server)
+      end
+      
+      let(:scheduler) { double("scheduler") }
+      
+      it "schedules at a time" do
+        subject.type = :at
+        subject.at = :time
+        scheduler.should_receive(:at).with(:time).and_yield
+        subject.schedule(scheduler, :server)
+      end
+      
+      it "schedules in a time" do
+        subject.type = :in
+        subject.in = :time
+        scheduler.should_receive(:in).with(:time).and_yield
+        subject.schedule(scheduler, :server)
+      end
+      
+      it "schedules by a cron time" do
+        subject.type = :cron
+        subject.cron = :time
+        scheduler.should_receive(:cron).with(:time).and_yield
+        subject.schedule(scheduler, :server)
+      end
+      
+      it "schedules every time" do
+        subject.type = :every
+        subject.every = :time
+        scheduler.should_receive(:every).with(:time).and_yield
+        subject.schedule(scheduler, :server)
+      end
+    end
+    
+    context "#Job.run" do
+      it "adds a task to the queue" do
+        job = BackgroundQueue::ServerLib::Config::Job.new(:at=>"something", :worker=>:abc, :args=>{:a=>:b})
+        server = double("server", :config=>double("config", :system_task_options=>{}), :task_queue=>double("task_queue"))
+        server.task_queue.should_receive(:add_task)
+        job.run(server)
+      end
+      
+    end
+    
 
     context "creating Config entry" do
       before do
@@ -165,14 +325,14 @@ describe "Server Config" do
         config = BackgroundQueue::ServerLib::Config.load_hash({
             :workers=>['http://127.0.0.1:801/background_queue', 'http://127.0.0.1:802/background_queue'],
             :secret=>'1234567890123456789012345678901234567890',
-            :memcache=> "127.0.0.1:4000",
-            :connections_per_worker=>10
+            :connections_per_worker=>10,
+            :jobs=>[{:at=>"some time", :worker=>:something}]
         }, :path_that_exists)
         config.workers.length.should eq(2)
         config.workers.first.uri.port.should eq(801)
         config.workers.last.uri.port.should eq(802)
-        config.memcache.length.should eq(1)
-        config.memcache.first.should eq('127.0.0.1:4000')
+        config.jobs.length.should eq(1)
+        config.jobs.first.at.should eq('some time')
         config.secret.should eq('1234567890123456789012345678901234567890')
       end
       
@@ -194,18 +354,9 @@ describe "Server Config" do
         )
       end
       
-      it "should fail when missing memcache" do
-        expect { 
-          config = BackgroundQueue::ServerLib::Config.load_hash({ :workers=>['http://127.0.0.1:802/background_queue'], :secret=>'1234567890123456789012345678901234567890' }, :path_that_exists)
-        }.to raise_error(
-          BackgroundQueue::LoadError, 
-          "Missing 'memcache' entry in configuration file expanded_path"
-        )
-      end
-      
       it "should fail when missing connections_per_worker" do
         expect { 
-          config = BackgroundQueue::ServerLib::Config.load_hash({ :workers=>['http://127.0.0.1:802/background_queue'], :secret=>'1234567890123456789012345678901234567890', :memcache=>"127.0.0.1:4000" }, :path_that_exists)
+          config = BackgroundQueue::ServerLib::Config.load_hash({ :workers=>['http://127.0.0.1:802/background_queue'], :secret=>'1234567890123456789012345678901234567890' }, :path_that_exists)
         }.to raise_error(
           BackgroundQueue::LoadError, 
           "Missing 'connections_per_worker' entry in background queue server configuration file expanded_path"

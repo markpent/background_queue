@@ -115,9 +115,9 @@ describe BackgroundQueue::ServerLib::EventConnection do
       server = double("server", :task_queue=>double('task_queue'))
       server.task_queue.should_receive(:add_task).with(:task)
       
-      command = BackgroundQueue::Command.new(:add_task, {}, {'owner_id'=>:owner_id, :job_id=>:job_id, 'task_id'=>:task_id, :priority=>:priority, :params=>:params  } )
+      command = BackgroundQueue::Command.new(:add_task, {}, {'owner_id'=>:owner_id, :job_id=>:job_id, 'task_id'=>:task_id, :priority=>:priority, :params=>:params, :worker=>:worker  } )
       
-      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task_id, :priority, :params, command.options).and_return(:task)
+      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task_id, :priority, :worker, :params, command.options).and_return(:task)
       
       
       subject.server = server
@@ -134,10 +134,10 @@ describe BackgroundQueue::ServerLib::EventConnection do
       server.task_queue.should_receive(:add_task).with(:task1)
       server.task_queue.should_receive(:add_task).with(:task2)
       
-      command = BackgroundQueue::Command.new(:add_tasks, {}, {'owner_id'=>:owner_id, :job_id=>:job_id, :tasks=>[[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], :priority=>:priority, :params=>:params, :shared_parameters=>{:shared=>:params}  } )
+      command = BackgroundQueue::Command.new(:add_tasks, {}, {'owner_id'=>:owner_id, :job_id=>:job_id, :tasks=>[[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], :priority=>:priority, :params=>:params, :worker=>:worker, :shared_parameters=>{:shared=>:params}  } )
       
-      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task1_id, :priority, {:a=>:b, :shared=>:params}, command.options).and_return(:task1)
-      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task2_id, :priority, {:e=>:f, :shared=>:params}, command.options).and_return(:task2)
+      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task1_id, :priority, :worker, {:a=>:b, :shared=>:params}, command.options).and_return(:task1)
+      BackgroundQueue::ServerLib::Task.should_receive(:new).with(:owner_id, :job_id, :task2_id, :priority, :worker, {:e=>:f, :shared=>:params}, command.options).and_return(:task2)
       
       subject.server = server
       subject.process_add_tasks_command(command).code.should eq(:result)
