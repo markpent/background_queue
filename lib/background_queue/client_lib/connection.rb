@@ -16,7 +16,7 @@ module BackgroundQueue::ClientLib
       check_connected
       send_with_header(command.to_buf)
       response = receive_with_header
-      BackgroundQueue::ClientLib::Command.from_buf(response)
+      BackgroundQueue::Command.from_buf(response)
     end
     
     private

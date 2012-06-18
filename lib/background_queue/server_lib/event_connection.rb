@@ -48,6 +48,7 @@ module BackgroundQueue::ServerLib
         result = process_command(cmd)
         send_result(result)
       rescue Exception=>e
+        @server.logger.error("Error processing command: #{e.message}")
         send_error(e.message)
       end
     end
@@ -70,7 +71,7 @@ module BackgroundQueue::ServerLib
     end
     
     def process_command(command)
-      case command.code
+      case command.code.to_s
       when 'add_task' 
         process_add_task_command(command)
       when 'add_tasks'
@@ -78,11 +79,12 @@ module BackgroundQueue::ServerLib
       when 'remove_tasks'
         process_remove_tasks_command(command)
       else
-        raise "Unknown command: #{command.code}"
+        raise "Unknown command: #{command.code.inspect}"
       end
     end
     
     def process_add_task_command(command)
+      @server.logger.debug("add_task: #{command.args[:owner_id]}, #{command.args[:job_id]}, #{command.args[:task_id]}")
       task = BackgroundQueue::ServerLib::Task.new(command.args[:owner_id], command.args[:job_id], command.args[:task_id], command.args[:priority], command.args[:worker], command.args[:params], command.options)
       server.task_queue.add_task(task)
       build_simple_command(:result, "ok")

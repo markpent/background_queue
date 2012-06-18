@@ -6,6 +6,7 @@ describe BackgroundQueue::ServerLib::EventConnection do
 
   subject { 
     s = BackgroundQueue::ServerLib::EventConnection.new(:something)
+    s.server = SimpleServer.new
     s.post_init
     s
   }
@@ -81,7 +82,7 @@ describe BackgroundQueue::ServerLib::EventConnection do
     
     it "will raise an error if unknown task" do
       cmd = double("command", :code=>'dunno')
-      expect { subject.process_command(cmd).should eq(:result) }.to raise_exception('Unknown command: dunno')
+      expect { subject.process_command(cmd).should eq(:result) }.to raise_exception('Unknown command: "dunno"')
     end
   end
   
@@ -112,7 +113,7 @@ describe BackgroundQueue::ServerLib::EventConnection do
   context "#process_add_task_command" do
     it "builds a task from the command and adds it to the queue" do
       
-      server = double("server", :task_queue=>double('task_queue'))
+      server = SimpleServer.new(:task_queue=>double('task_queue'))
       server.task_queue.should_receive(:add_task).with(:task)
       
       command = BackgroundQueue::Command.new(:add_task, {}, {'owner_id'=>:owner_id, :job_id=>:job_id, 'task_id'=>:task_id, :priority=>:priority, :params=>:params, :worker=>:worker  } )
@@ -130,7 +131,7 @@ describe BackgroundQueue::ServerLib::EventConnection do
   context "#process_add_tasks_command" do
     it "builds a set of tasks from the command and adds them to the queue" do
       
-      server = double("server", :task_queue=>double('task_queue'))
+      server = SimpleServer.new(:task_queue=>double('task_queue'))
       server.task_queue.should_receive(:add_task).with(:task1)
       server.task_queue.should_receive(:add_task).with(:task2)
       

@@ -5,10 +5,9 @@ require 'background_queue_server'
 describe "Queue Integration" do
 
   let(:server) {
-    svr = double("server")
-    tm = BackgroundQueue::ServerLib::ThreadManager.new(svr, 5)
-    svr.stub(:thread_manager) { tm}
-    svr
+    ss = SimpleServer.new(:jobs=>BackgroundQueue::ServerLib::JobRegistry.new)
+    ss.thread_manager=BackgroundQueue::ServerLib::ThreadManager.new(ss, 5)
+    ss
   }
   
   subject { BackgroundQueue::ServerLib::BalancedQueue.new(server) }

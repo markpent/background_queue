@@ -5,7 +5,7 @@ class BackgroundQueue::ServerLib::ThreadManager
   attr_reader :running_threads
   
   def initialize(server, max_threads)
-    @server
+    @server = server
     @max_threads = max_threads
     @running_threads = 0
     @mutex = Mutex.new
@@ -21,7 +21,7 @@ class BackgroundQueue::ServerLib::ThreadManager
 
   def control_access(&block)
     @mutex.synchronize {
-      if @running_threads >= @max_threads
+      if @running_threads >= @max_threads && @server.running?
         @running_threads -= 1
         @condvar.wait(@mutex)
         @running_threads += 1
@@ -40,9 +40,13 @@ class BackgroundQueue::ServerLib::ThreadManager
   #wait for the condition
   #must be called from within protect_access/control_access block
   def wait_on_access
-    @running_threads -= 1
-    @condvar.wait(@mutex)
-    @running_threads += 1
+    if @server.running?
+      @running_threads -= 1
+      #puts "waiting"
+      @condvar.wait(@mutex)
+      #puts "woken"
+      @running_threads += 1
+    end
   end
   
   def change_concurrency(max_threads)
@@ -62,17 +66,37 @@ class BackgroundQueue::ServerLib::ThreadManager
       for i in 0...@max_threads
         runner = clazz.new(@server)
         @running_threads += 1
-        @threads << Thread.new {
-          runner.run
+        #puts "started thread, running=#{@running_threads}"
+        @threads << Thread.new(runner) { |runner|
+          begin
+            runner.run
+          rescue Exception=>e
+            @server.logger.error("Error in thread: #{e.message}")
+            @server.logger.debug(e.backtrace.join("\n"))
+          end
+          @mutex.synchronize {
+            @running_threads -= 1
+            #puts "finished thread, running=#{@running_threads}"
+          }
         }
       end
     }
   end
   
   def wait
+    #for thread in @threads
+      @mutex.synchronize {
+        @condvar.broadcast
+      }
+    #end
+    #while @running_threads > 0
+    #  @mutex.synchronize {
+    #    @condvar.signal
+    #  }
+    #  sleep(0.01)
+    #end
     for thread in @threads
       thread.join
-      @running_threads -= 1
     end
   end
 end

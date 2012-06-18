@@ -3,6 +3,7 @@ module BackgroundQueue::ServerLib
   
   class BalancedQueue < PriorityQueue
     include BackgroundQueue::ServerLib::QueueRegistry
+    
     def initialize(server)
       @task_registry = BackgroundQueue::ServerLib::TaskRegistry.new
       @condvar = ConditionVariable.new
@@ -44,6 +45,10 @@ module BackgroundQueue::ServerLib
     
     def self.queue_class
       BackgroundQueue::ServerLib::Owner
+    end
+    
+    def register_job(job)
+      @server.jobs.register(job)
     end
     
     private

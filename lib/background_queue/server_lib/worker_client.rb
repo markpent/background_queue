@@ -16,11 +16,13 @@ module BackgroundQueue::ServerLib
       begin
         Net::HTTP.start(worker.uri.host, worker.uri.port) do |server|
           server.request(req) do |response|
-            read_response(response, task)
+            read_response(worker, response, task)
           end
         end
         true
       rescue Exception=>e
+        @server.logger.error("Error sending request #{task.id} to worker: #{e.message}")
+        @server.logger.debug(e.backtrace.join("\n"))
         return false
       end
     end
@@ -36,13 +38,13 @@ module BackgroundQueue::ServerLib
     
     
     
-    def read_response(http_response, task)
+    def read_response(worker, http_response, task)
       if http_response.code == "200"
         http_response.read_body do |chunk|
           process_chunk(chunk, task)
         end
       else
-        raise "Invalid response code: #{http_response.code}"
+        raise "Invalid response code (#{http_response.code}) when calling #{worker.uri.to_s}"
       end
     end
     
@@ -67,8 +69,8 @@ module BackgroundQueue::ServerLib
         set_worker_status(hash_data, task)
         true
       rescue Exception=>e
-        #silently fail (TODO: log this!)
-        #puts e.message
+        @server.logger.error("Error processing status line of task #{task.id}: #{e.message}")
+        @server.logger.debug(e.backtrace.join("\n"))
         false
       end
     end

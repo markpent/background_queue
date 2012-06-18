@@ -29,7 +29,7 @@ class BackgroundQueue::ServerLib::SortedWorkers
   
   def adjust_worker(worker)
     idx = @worker_list.index(worker)
-    raise "Worker not found" if idx.nil?
+    raise "Worker not found (#{worker.inspect} not in #{@worker_list.inspect})" if idx.nil?
     swap_idx = idx - 1
     while swap_idx >= 0 && @worker_list[swap_idx].connections > worker.connections
       swap_idx -= 1

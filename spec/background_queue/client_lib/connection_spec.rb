@@ -142,7 +142,7 @@ describe "Connection" do
       subject.stub(:check_connected) { true }
       subject.should_receive(:send_with_header).with(:data) { true }
       subject.should_receive(:receive_with_header).with(no_args) { :receive_response }
-      BackgroundQueue::ClientLib::Command.should_receive(:from_buf).with(:receive_response) { :command_response }
+      BackgroundQueue::Command.should_receive(:from_buf).with(:receive_response) { :command_response }
       
       subject.send_command(send_command).should eq(:command_response)
     end

@@ -6,7 +6,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
 
   it_behaves_like "a queue registry" do
     let(:server) {
-      double("server", :thread_manager=>:thread_manager)
+     SimpleServer.new( :thread_manager=>:thread_manager)
     }
     let(:new_instance) { BackgroundQueue::ServerLib::BalancedQueue.new(server) }
   end
@@ -18,7 +18,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
     tm
   }
   let(:server) {
-    double("server", :thread_manager=>thread_manager)
+   SimpleServer.new( :thread_manager=>thread_manager)
   }
   subject {  BackgroundQueue::ServerLib::BalancedQueue.new(server) }
   

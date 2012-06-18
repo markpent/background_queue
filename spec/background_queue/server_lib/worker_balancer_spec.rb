@@ -9,7 +9,7 @@ describe BackgroundQueue::ServerLib::WorkerBalancer do
   context "#initialize" do
     it "loads the workers from the config" do
       config = BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2)], :secret, :memcache, :address, :cons, :sopts)
-      server = double("server", :config=>config)
+      server = SimpleServer.new(:config=>config)
       
       balancer = BackgroundQueue::ServerLib::WorkerBalancer.new(server)
       balancer.available_workers.worker_list[0].uri.should eq(:worker_1)
@@ -22,7 +22,7 @@ describe BackgroundQueue::ServerLib::WorkerBalancer do
     let(:config) {
       BackgroundQueue::ServerLib::Config.new([double("wc", :uri=>:worker_1), double("wc", :uri=>:worker_2), double("w3", :uri=>:worker_3)], :secret, :memcache, :address, :cons, :sopts)
     }
-    subject { BackgroundQueue::ServerLib::WorkerBalancer.new(double("server", :config=>config)) }
+    subject { BackgroundQueue::ServerLib::WorkerBalancer.new(SimpleServer.new(:config=>config)) }
      
      
     context "#register_start" do
@@ -120,7 +120,6 @@ describe BackgroundQueue::ServerLib::WorkerBalancer do
       
       it "will register offline if not online" do
         subject.should_receive(:register_offline).with(:worker)
-        subject.should_receive(:register_finish).with(:worker)
         subject.finish_using_worker(:worker, false)
       end
     end

@@ -308,7 +308,7 @@ describe "Server Config" do
     context "#Job.run" do
       it "adds a task to the queue" do
         job = BackgroundQueue::ServerLib::Config::Job.new(:at=>"something", :worker=>:abc, :args=>{:a=>:b})
-        server = double("server", :config=>double("config", :system_task_options=>{}), :task_queue=>double("task_queue"))
+        server = SimpleServer.new(:config=>double("config", :system_task_options=>{}), :task_queue=>double("task_queue"))
         server.task_queue.should_receive(:add_task)
         job.run(server)
       end

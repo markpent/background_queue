@@ -30,6 +30,12 @@ module BackgroundQueue::ServerLib
 
     private
     
+    def create_queue(queue_id)
+      job = super(queue_id)
+      @balanced_queues.register_job(job)
+      job
+    end
+    
     def get_queue_id_from_item(item)
       item.job_id
     end

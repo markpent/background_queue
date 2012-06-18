@@ -76,12 +76,12 @@ describe BackgroundQueue::ServerLib::Server do
 
   context "#load_configuration" do
     it "will continue if successful" do
-      BackgroundQueue::ServerLib::Config.should_receive(:open_file).with(:path).and_return(true)
+      BackgroundQueue::Config.should_receive(:load_file).with(:path).and_return(true)
       subject.load_configuration(:path).should be_true
     end
     
     it "will raise an error if configuration does not load" do
-      BackgroundQueue::ServerLib::Config.should_receive(:open_file).with(:path).and_raise("nooo!")
+      BackgroundQueue::Config.should_receive(:load_file).with(:path).and_raise("nooo!")
       expect { subject.load_configuration(:path) }.to raise_exception("nooo!")
     end
   end

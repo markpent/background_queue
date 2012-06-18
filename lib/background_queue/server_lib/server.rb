@@ -5,7 +5,16 @@ module BackgroundQueue::ServerLib
   class Server
     
     attr_accessor :config
+    attr_accessor :thread_manager
+    attr_accessor :task_queue
+    attr_accessor :event_server
+    attr_accessor :workers
+    attr_accessor :jobs
+    attr_accessor :logger
     
+    def initialize
+      @running = false
+    end
     
     def process_args(argv)
       argv = argv.clone
@@ -41,7 +50,7 @@ module BackgroundQueue::ServerLib
     end
     
     def load_configuration(path)
-      @config = BackgroundQueue::ServerLib::Config.open_file(path)
+      @config = BackgroundQueue::ServerLib::Config.load_file(path)
       true
     end
     
@@ -72,13 +81,19 @@ module BackgroundQueue::ServerLib
     end
     
     def init_logging(path, level)
-      return if path.nil? || path.to_s.strip.length == 0
-      path = resolve_logging_path(path)
-      begin
-        @logger = Logger.new(path, "daily")
-        set_logging_level(@logger, level)
-      rescue Exception=>e
-        raise "Error initializing log file #{path}: #{e.message}"
+      unless path.nil? || path.to_s.strip.length == 0
+        path = resolve_logging_path(path)
+        begin
+          @logger = Logger.new(path, "daily")
+          set_logging_level(@logger, level)
+        rescue Exception=>e
+          raise "Error initializing log file #{path}: #{e.message}"
+        end
+      end
+      if @logger.nil?
+        #just make a fallback logger...
+        @logger = Logger.new($stderr)
+        set_logging_level(@logger, "fatal")
       end
     end
     
@@ -161,8 +176,8 @@ module BackgroundQueue::ServerLib
       begin
         load_configuration(options[:config])
         init_logging(options[:log_file], options[:log_level])
-        check_not_running(options)
-        write_pid(options)
+        check_not_running(options) unless options[:skip_pid]
+        write_pid(options) unless options[:skip_pid]
         if options[:command] == :start
           daemonize(options)
         elsif options[:command] == :run
@@ -173,6 +188,32 @@ module BackgroundQueue::ServerLib
       rescue Exception=>e
         STDERR.puts e.message
       end
+    end
+    
+    def running?
+      @running
+    end
+    
+    def run(options)
+      @running = true
+      @thread_manager = BackgroundQueue::ServerLib::ThreadManager.new(self, self.config.connections_per_worker)
+      
+      @workers = BackgroundQueue::ServerLib::WorkerBalancer.new(self)
+      @task_queue = BackgroundQueue::ServerLib::BalancedQueue.new(self)
+      
+      @thread_manager.start(BackgroundQueue::ServerLib::WorkerThread)
+      
+      @event_server = BackgroundQueue::ServerLib::EventServer.new(self)
+      
+      @jobs = BackgroundQueue::ServerLib::JobRegistry.new
+      
+      @event_server.start
+    end
+    
+    def stop
+      @running = false
+      @event_server.stop
+      @thread_manager.wait
     end
   end
 end

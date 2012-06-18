@@ -13,7 +13,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
   }
   
   let(:server) {
-    double("server", :task_queue=>balanced_queue, :workers=>workers, :config=>double("conf", :secret=>:secret))
+    SimpleServer.new(:task_queue=>balanced_queue, :workers=>workers, :config=>double("conf", :secret=>:secret))
   }
   
   subject { BackgroundQueue::ServerLib::WorkerThread.new(server) }
@@ -47,20 +47,22 @@ describe BackgroundQueue::ServerLib::WorkerThread do
     it "will get a worker and call it" do
       server.stub('running?'=>true)
       worker = double("worker")
-      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, :task, :secret).and_return(true)
+      task = DefaultTask.new
+      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
       server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
-      subject.call_worker(:task).should be_true
+      subject.call_worker(task).should be_true
     end
     
     it "will keep trying if the worker fails" do
       server.stub('running?'=>true)
       worker = double("worker")
+      task = DefaultTask.new
       count = 0
       worker_client1 = double("w1")
-      worker_client1.should_receive(:send_request).with(worker, :task, :secret).and_return(false)
+      worker_client1.should_receive(:send_request).with(worker, task, :secret).and_return(false)
       worker_client2 = double("w2")
-      worker_client2.should_receive(:send_request).with(worker, :task, :secret).and_return(true)
+      worker_client2.should_receive(:send_request).with(worker, task, :secret).and_return(true)
       
       subject.should_receive(:build_client).twice {
         count += 1
@@ -69,26 +71,27 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       server.workers.should_receive(:get_next_worker).twice.and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, false)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
-      subject.call_worker(:task).should be_true
+      subject.call_worker(task).should be_true
     end
     
     it "will sleep and try again if there are no workers" do
       server.stub('running?'=>true)
       count = 0
+      task = DefaultTask.new
       worker = double("worker")
       server.workers.should_receive(:get_next_worker).twice {
         count += 1
         count == 1 ? nil : worker
       }
       Kernel.should_receive(:sleep).with(1)
-      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, :task, :secret).and_return(true)
+      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
-      subject.call_worker(:task).should be_true
+      subject.call_worker(task).should be_true
     end
     
     it "will stop trying if the server is not running" do
       server.stub('running?'=>false)
-      subject.call_worker(:task).should be_false
+      subject.call_worker(DefaultTask.new).should be_false
     end
   end
   

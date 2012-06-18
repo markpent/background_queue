@@ -43,10 +43,11 @@ module BackgroundQueue::ServerLib
     
     def finish_using_worker(worker, online)
       @mutex.synchronize { 
-        unless online
+        if online
+          register_finish(worker)
+        else
           register_offline(worker)
         end
-        register_finish(worker)
       }
     end
     
@@ -63,6 +64,7 @@ module BackgroundQueue::ServerLib
     end
     
     def register_offline(worker)
+      worker.connections -= 1
       unless worker.offline?
         worker.offline = true
         @available_workers.remove_worker(worker)

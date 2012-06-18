@@ -4,7 +4,7 @@ require 'background_queue_server'
 
 describe BackgroundQueue::ServerLib::WorkerClient do
 
-  subject { BackgroundQueue::ServerLib::WorkerClient.new(:server) }
+  subject { BackgroundQueue::ServerLib::WorkerClient.new(SimpleServer.new) }
   
   
   context "#build_request" do
@@ -27,7 +27,7 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       
       http_instance = double("http")
       http_instance.should_receive(:request).with(:post_request).and_yield(:http_response)
-      subject.should_receive(:read_response).with(:http_response, task).and_return(true)
+      subject.should_receive(:read_response).with(worker_config, :http_response, task).and_return(true)
       
       Net::HTTP.should_receive(:start).with("127.0.0.1", 3000).and_yield(http_instance)
       subject.send_request(worker_config, task, "auth").should be_true
@@ -49,12 +49,13 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       http_response = double("response", :code=>"200")
       http_response.should_receive(:read_body).and_yield("data")
       subject.should_receive(:process_chunk).with("data", :task)
-      subject.__prv__read_response(http_response, :task)
+      subject.__prv__read_response(:worker_config, http_response, :task)
     end
     
     it "will raise an error if response is not 200" do
       http_response = double("response", :code=>"400")
-      expect { subject.__prv__read_response(http_response, :task) }.to raise_exception
+      worker_config = double("wc", :url=>"uri")
+      expect { subject.__prv__read_response(worker_config, http_response, :task) }.to raise_exception
     end
   end
   
@@ -94,13 +95,13 @@ describe BackgroundQueue::ServerLib::WorkerClient do
     end
     
     it "fails gracefully on invalid json" do
-      subject.__prv__process_line('{ "a":"b"', :task).should be_false
+      subject.__prv__process_line('{ "a":"b"', DefaultTask.new).should be_false
     end
   end
   
   context "#set_worker_status" do
     it "calls set_worker_status on the task" do
-      task = double("task")
+      task = DefaultTask.new
       
       BackgroundQueue::Utils::AnyKeyHash.should_receive(:new).with(:status).and_return(:kstatus)
       task.should_receive(:set_worker_status).with(:kstatus)

@@ -21,10 +21,11 @@ module BackgroundQueue::ServerLib
     end
     
     def call_worker(task)
+      @server.logger.debug("calling worker for task #{task.id}")
       while @server.running?
         worker = @server.workers.get_next_worker
         if worker.nil?
-          Kernel.sleep(1)
+          Kernel.sleep(1) unless !@server.running?
         else
           client = build_client
           if client.send_request(worker, task, @server.config.secret)
