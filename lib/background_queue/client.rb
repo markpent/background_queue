@@ -20,6 +20,11 @@ module BackgroundQueue
       send_command(BackgroundQueue::ClientLib::Command.add_tasks_command(worker, owner_id, job_id, tasks, shared_parameters, options ))
     end
     
+    
+    def get_status(job_id, options={}, server=@config.server)
+      send_command(BackgroundQueue::ClientLib::Command.get_status_command(job_id, options ), server)
+    end
+    
     #removed for now
     #remove tasks from the background queue
     #def remove_tasks(tasks, options={})
@@ -29,9 +34,9 @@ module BackgroundQueue
     
     private
     
-    def send_command(command)
+    def send_command(command, server=@config.server)
       begin
-        send_command_to_server(command, @config.server)
+        send_command_to_server(command, server)
       rescue BackgroundQueue::ClientLib::ConnectionError=>e
         failures = []
         failures << e.message
@@ -48,7 +53,7 @@ module BackgroundQueue
     
     def send_command_to_server(command, server)
       connection = BackgroundQueue::ClientLib::Connection.new(self, server)
-      connection.send_command(command)
+      [connection.send_command(command), server]
     end
   end
   

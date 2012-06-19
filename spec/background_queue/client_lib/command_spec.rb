@@ -43,6 +43,16 @@ describe "Command" do
   end
   
   
+  context "#get_status_command" do
+    it "creates valid command" do
+      cmd = BackgroundQueue::ClientLib::Command.get_status_command(:job_id,  {:c=>:d} )
+      cmd.code.should eq(:get_status)
+      cmd.options[:c].should eq(:d)
+      cmd.args[:job_id].should eq(:job_id)
+    end
+  end
+  
+  
   #i cant see why this would be needed.... will add back if needed
   #context "remove_tasks" do
   #  it "creates valid command" do

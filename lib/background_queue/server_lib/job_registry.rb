@@ -3,8 +3,8 @@ module BackgroundQueue::ServerLib
   #this allows us to query the status of the job after its finished.
   #It is used to get the status of the job
   class JobRegistry
-    def initialize
-      @lru = Cache::LRU.new(:max_elements=>1000)
+    def initialize(size = 1000)
+      @lru = Cache::LRU.new(:max_elements=>size)
       @mutex = Mutex.new
       
     end
@@ -19,6 +19,12 @@ module BackgroundQueue::ServerLib
       @mutex.synchronize {
         @lru[id]
       }
+    end
+    
+    private
+    
+    def lru
+      @lru
     end
   end
 end

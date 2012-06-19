@@ -16,6 +16,11 @@ module BackgroundQueue::ClientLib
       BackgroundQueue::Command.new(:add_tasks, options, :worker=>worker, :owner_id=>owner_id, :job_id=>job_id, :tasks=>tasks, :priority=>priority, :shared_parameters=>shared_parameters)
     end
     
+    #create an 'get_status' command
+    def self.get_status_command(job_id, options={} )
+      BackgroundQueue::Command.new(:get_status, options, {:job_id=>job_id})
+    end
+    
     #create a 'remove tasks' command
     #is this needed?
     #def self.remove_tasks_command(tasks, options={})

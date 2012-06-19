@@ -66,10 +66,10 @@ module BackgroundQueue::ServerLib
     
     
     def set_worker_status(status)
+      running_status = get_running_status(status)
       if status[:percent] >= 100
         update_finished_status(status)
       else
-        running_status = get_running_status(status)
         update_running_status(running_status, status)
       end
     end
@@ -109,7 +109,10 @@ module BackgroundQueue::ServerLib
       unless rstatus.nil?
         @completed_tasks += 1
         @completed_counted_tasks += 1 unless rstatus[:exclude]
-       # @current_running_excluded_status = nil if @current_running_excluded_status == rstatus
+        if self.current_running_status.nil?
+          #sometimes the status is finished straight away...
+          update_current_caption(status)
+        end
         update_running_percent()
       end
     end
@@ -122,18 +125,13 @@ module BackgroundQueue::ServerLib
         total_percent += status[:percent]
       end
       set_running_percent(total_percent_counted.to_f / 100.0, total_percent.to_f / 100.0)
-      
       self.update_current_progress
-      
-      
     end
     
     def set_running_percent(pcent_counted, pcent)
       @running_percent_counted = pcent_counted
       @running_percent = pcent
       idx = @running_percent.to_i
-      #if idx == 0 && @running_ordered_status.length == 0 && !@current_running_excluded_status.nil?
-      #  @current_running_status = @current_running_excluded_status
       if @running_ordered_status.length <= idx
         @current_running_status = @running_ordered_status.last
       else
@@ -154,14 +152,18 @@ module BackgroundQueue::ServerLib
     
     def get_current_progress_caption
       if self.current_running_status
-        caption = self.current_running_status[:caption]
-        caption = "" if caption.nil?
-        if total_counted_tasks > 1 && self.current_running_status[:exclude] != true
-          caption = "#{caption} (#{self.get_current_counted_tasks}/#{self.total_counted_tasks})"
-        end
-        @current_caption = caption
+        update_current_caption(self.current_running_status)
       end
       @current_caption
+    end
+    
+    def update_current_caption(status)
+      caption = status[:caption]
+      caption = "" if caption.nil?
+      if total_counted_tasks > 1 && status[:exclude] != true
+        caption = "#{caption} (#{self.get_current_counted_tasks}/#{self.total_counted_tasks})"
+      end
+      @current_caption = caption
     end
     
     def get_current_counted_tasks
@@ -177,6 +179,7 @@ module BackgroundQueue::ServerLib
         :percent=>get_current_progress_percent,
         :caption=>get_current_progress_caption
       }
+      #puts "set status to #{@current_progress.inspect}"
     end
 
     def get_current_progress

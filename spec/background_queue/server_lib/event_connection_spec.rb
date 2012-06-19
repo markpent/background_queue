@@ -80,6 +80,12 @@ describe BackgroundQueue::ServerLib::EventConnection do
       subject.process_command(cmd).should eq(:result)
     end
     
+    it "will call process_get_status_command if cmd is get_status" do
+      cmd = double("command", :code=>'get_status')
+      subject.should_receive(:process_get_status_command).with(cmd).and_return(:result)
+      subject.process_command(cmd).should eq(:result)
+    end
+    
     it "will raise an error if unknown task" do
       cmd = double("command", :code=>'dunno')
       expect { subject.process_command(cmd).should eq(:result) }.to raise_exception('Unknown command: "dunno"')
@@ -144,6 +150,37 @@ describe BackgroundQueue::ServerLib::EventConnection do
       subject.process_add_tasks_command(command).code.should eq(:result)
     end
     
+  end
+  
+  context "#process_get_status_command" do
+    it "will get the status of a registered job" do
+      server = SimpleServer.new(:jobs=>double('jobs'))
+      job = double("job")
+      server.jobs.should_receive(:get_job).with(:job_id).and_return(job)
+      job.should_receive(:get_current_progress).and_return({:percent=>100, :caption=>"done"})
+      subject.server = server
+      
+      command = BackgroundQueue::Command.new(:get_status, {}, {:job_id=>:job_id } )
+      
+      result = subject.process_get_status_command(command)
+      
+      result.args[:percent].should eq(100)
+      result.args[:caption].should eq("done")
+      result.code.should eq(:status)
+    end
+    
+    it "will return job_not_found if job is not registered" do
+      server = SimpleServer.new(:jobs=>double('jobs'))
+      job = double("job")
+      subject.server = server
+      server.jobs.should_receive(:get_job).with(:job_id).and_return(nil)
+      command = BackgroundQueue::Command.new(:get_status, {}, {:job_id=>:job_id } )
+      
+      result = subject.process_get_status_command(command)
+      
+      result.code.should eq(:job_not_found)
+      
+    end
   end
   
   

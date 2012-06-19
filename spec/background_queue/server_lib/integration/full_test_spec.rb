@@ -39,7 +39,7 @@ describe "Full Test" do
 
         response.status = 200
         response['Content-Type'] = "text/text"
-        response.body = "{percent:100, caption:'Done'}"
+        response.body = {:percent=>100, :caption=>"Done"}.to_json
       })
       
       
@@ -48,10 +48,15 @@ describe "Full Test" do
       client = BackgroundQueue::Client.new(client_config_path)
       
 
-      client.add_task(:some_worker, :owner_id, :job_id, :task_id, {:something=>:else}, {:domain=>"www.example.com"} )
+      result, server_used = client.add_task(:some_worker, :owner_id, :job_id, :task_id, {:something=>:else}, {:domain=>"www.example.com"} )
 
       ss.wait_to_be_called.should be_true
+      
+      result, server_used = client.get_status(:job_id,  {}, server_used )
 
+      result.code.should eq(:status)
+      result.args[:percent].should eq(100)
+      result.args[:caption].should eq('Done')
 
       meth_name.should eq("POST")
       ss.stop

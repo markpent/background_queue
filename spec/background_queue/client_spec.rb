@@ -22,7 +22,7 @@ describe "Client" do
     context "sending a command" do
       it "can send a command to a server" do
         BackgroundQueue::ClientLib::Connection.any_instance.should_receive(:send_command).with(:command) { true }
-        subject.__prv__send_command_to_server(:command, :primary_server).should eq(true)
+        subject.__prv__send_command_to_server(:command, :primary_server).should eq([true, :primary_server])
       end
       
       it "can succeed first time" do
@@ -53,20 +53,29 @@ describe "Client" do
     
     context "single call commands" do
       before do
-        subject.should_receive(:send_command).with(anything) { true }
+        subject.should_receive(:send_command).with(anything) { [true, :server] }
       end
       it "can build and send an add task command" do
-        subject.add_task(:worker, :owner_id, :job_id, :task_id, {}, {} ).should eq(true)
+        subject.add_task(:worker, :owner_id, :job_id, :task_id, {}, {} ).should eq([true, :server])
       end
       
       it "can build and send an add tasks command" do
-        subject.add_tasks(:worker, :owner_id, :job_id, :tasks, {}, {} ).should eq(true)
+        subject.add_tasks(:worker, :owner_id, :job_id, :tasks, {}, {} ).should eq([true, :server])
       end
+      
       
       #it "can build and send a remove task command" do
       #  subject.remove_tasks(:tasks, {}).should eq(true)
       #end
       
+    end
+    
+    context "#get_status" do
+      it "passes the requested server" do
+        BackgroundQueue::ClientLib::Command.should_receive(:get_status_command).with(:job_id, {} ).and_return(:cmd)
+        subject.should_receive(:send_command).with(:cmd, :another_server) { [true, :another_server] }
+        subject.get_status(:job_id, {}, :another_server).should eq([true, :another_server])
+      end
     end
   end
 end

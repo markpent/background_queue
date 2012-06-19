@@ -78,6 +78,8 @@ module BackgroundQueue::ServerLib
         process_add_tasks_command(command)
       when 'remove_tasks'
         process_remove_tasks_command(command)
+      when 'get_status'
+        process_get_status_command(command)
       else
         raise "Unknown command: #{command.code.inspect}"
       end
@@ -107,6 +109,15 @@ module BackgroundQueue::ServerLib
         server.task_queue.add_task(task)
       end
       build_simple_command(:result, "ok")
+    end
+    
+    def process_get_status_command(command)
+      job = @server.jobs.get_job(command.args[:job_id])
+      if job.nil?
+        build_simple_command(:job_not_found, "job #{command.args[:job_id]} not found")
+      else
+        BackgroundQueue::Command.new(:status, {}, job.get_current_progress)
+      end
     end
   
   end

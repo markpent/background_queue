@@ -43,6 +43,11 @@ module BackgroundQueue::ServerLib
         http_response.read_body do |chunk|
           process_chunk(chunk, task)
         end
+        #the last chunk did not end in a newline... process it
+        unless @prev_chunk.nil?
+          process_line(@prev_chunk.strip, task)
+          @prev_chunk = nil
+        end
       else
         raise "Invalid response code (#{http_response.code}) when calling #{worker.uri.to_s}"
       end
@@ -66,7 +71,11 @@ module BackgroundQueue::ServerLib
       hash_data = nil
       begin
         hash_data = JSON.load(line)
-        set_worker_status(hash_data, task)
+        if hash_data.kind_of?(Hash)
+          set_worker_status(hash_data, task)
+        else
+          raise "Invalid Status Line (wrong datatype: #{hash_data.class.name}"
+        end
         true
       rescue Exception=>e
         @server.logger.error("Error processing status line of task #{task.id}: #{e.message}")

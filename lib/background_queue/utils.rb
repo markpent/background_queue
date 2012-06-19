@@ -27,6 +27,10 @@ module BackgroundQueue
       def [] (key)
         BackgroundQueue::Utils.get_hash_entry(@hash, key)
       end
+      
+      def []=(key, value)
+        @hash[key] = value
+      end
     end
   end
 end
