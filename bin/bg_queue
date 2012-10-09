@@ -1,4 +1,26 @@
 #!/usr/bin/env ruby
 
-require 'background_queue'
+require 'background_queue_server'
+
+server = BackgroundQueue::ServerLib::Server.new
+
+begin
+  options = server.process_args(ARGV)
+  if options[:command] == :stop
+    server.stop_pid(options)
+  else
+    server.start(options)
+  end
+rescue SystemExit=>se
+  
+rescue BackgroundQueue::ServerLib::InitError=>ie
+  puts ie.message
+  exit(1)
+rescue Exception=>e
+  puts "#{e.class.name} : #{e.message}"
+  puts e.backtrace.join("\n")
+  exit(1)
+end
+
+
 
