@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = "background_queue"
-  s.version = "0.1.0"
+  s.version = "0.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["MarkPent"]
@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
     "Rakefile",
     "TODO",
     "VERSION",
+    "background_queue.gemspec",
     "bin/bg_queue",
     "lib/background_queue.rb",
     "lib/background_queue/client.rb",
