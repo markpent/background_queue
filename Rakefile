@@ -17,8 +17,8 @@ Jeweler::Tasks.new do |gem|
   gem.name = "background_queue"
   gem.homepage = "http://github.com/markpent/background_queue"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{Background processing}
+  gem.description = %Q{Organise background tasks so they will not overload the machine(s) running the tasks, while still giving a fair, balanced allocation of running time to members in the queue}
   gem.email = "mark.pent@gmail.com"
   gem.authors = ["MarkPent"]
   # dependencies defined in Gemfile

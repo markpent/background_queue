@@ -48,6 +48,5 @@ pkg
 # For rubinius:
 #*.rbc
 
-TODO
 xxx*
 *.lock
