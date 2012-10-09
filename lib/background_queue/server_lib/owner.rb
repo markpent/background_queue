@@ -16,8 +16,12 @@ module BackgroundQueue::ServerLib
       @id == other.id
     end
     
+    def server
+      @balanced_queues.server
+    end
+    
     def inspect
-      "#{self.id}"
+      "OwnerQueue:#{self.id} (#{self.object_id})"
     end
 
     def self.queue_class

@@ -256,6 +256,74 @@ describe BackgroundQueue::ServerLib::Server do
     end
   end
   
+  context "#load_tasks" do
+    it "will do nothing if the task_file is nil" do
+      File.should_not_receive(:exist?)
+      subject.load_tasks(nil)
+    end
+    
+    it "will not load the tasks if the path does not exist" do
+      File.should_receive(:exist?).with('path').and_return(false)
+      File.should_not_receive(:open)
+      subject.load_tasks('path')
+    end
+    
+    it "will load the tasks from the path" do
+      File.should_receive(:exist?).with('path').and_return(true)
+      File.should_receive(:open).with('path', 'r').and_yield(:io)
+      task_queue = double("tq")
+      task_queue.should_receive(:load_from_file).with(:io)
+      subject.stub(:task_queue) { task_queue }
+      subject.load_tasks('path')
+    end
+    
+    it "will log errors when loading the file" do
+      File.should_receive(:exist?).with('path').and_return(true)
+      File.should_receive(:open).with('path', 'r').and_yield(:io)
+      task_queue = double("tq")
+      task_queue.should_receive(:load_from_file).with(:io).and_raise("ERROR")
+      subject.stub(:task_queue) { task_queue }
+      
+      logger = double("logger")
+      logger.should_receive(:error)
+      logger.should_receive(:debug)
+      subject.stub(:logger) { logger }
+      subject.load_tasks('path')
+      
+    end
+    
+  end
+  
+  context "#save_tasks" do
+    it "will do nothing if the task_file is nil" do
+      File.should_not_receive(:exist?)
+      subject.save_tasks(nil)
+    end
+
+    it "will save the tasks to the path" do
+      File.should_receive(:open).with('path', 'w').and_yield(:io)
+      task_queue = double("tq")
+      task_queue.should_receive(:save_to_file).with(:io)
+      subject.stub(:task_queue) { task_queue }
+      subject.save_tasks('path')
+    end
+    
+    it "will log errors when saving to file" do
+      File.should_receive(:open).with('path', 'w').and_yield(:io)
+      task_queue = double("tq")
+      task_queue.should_receive(:save_to_file).with(:io).and_raise("ERROR")
+      subject.stub(:task_queue) { task_queue }
+      
+      logger = double("logger")
+      logger.should_receive(:error)
+      logger.should_receive(:debug)
+      subject.stub(:logger) { logger }
+      subject.save_tasks('path')
+      
+    end
+    
+  end
+  
   context "#start" do
     it "will load configuration, init logging then deamonise" do
       subject.should_receive(:load_configuration).and_return(nil)

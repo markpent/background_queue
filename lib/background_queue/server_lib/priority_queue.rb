@@ -69,6 +69,14 @@ module BackgroundQueue::ServerLib
       q.first
     end
     
+    def each_item(&block)
+      for queue in @queues
+        for item in queue
+          block.call(item)
+        end
+      end
+    end
+    
     private
     
     def get_queue_for_priority(priority, create)

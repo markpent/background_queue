@@ -15,6 +15,7 @@ module BackgroundQueue::ServerLib
   #     workers: 
   #       - http://127.0.0.1:801/background_queue
   #     secret: this_is_used_to_make_sure_it_is_secure
+  #     task_file: /path/to/file/to/save/running/tasks
   #   production:
   #     address: 
   #       host: 0.0.0.0
@@ -40,6 +41,9 @@ module BackgroundQueue::ServerLib
     
     #the shared secret to make sure the worker is not called directly from the internet
     attr_reader :secret
+    
+    #a path where tasks are saved when the server shuts down, and loaded when it starts back up. This will store tasks being lost when restarting the server.
+    attr_reader :task_file
 
     #an array of scheduled jobs
     attr_reader :jobs
@@ -61,7 +65,8 @@ module BackgroundQueue::ServerLib
         get_address_entry(env_config, path),
         get_connections_per_worker_entry(env_config, path),
         get_jobs_entry(env_config, path),
-        get_system_task_options_entry(env_config, path)
+        get_system_task_options_entry(env_config, path),
+        get_task_file_entry(env_config, path)
       )
     end
     
@@ -148,17 +153,50 @@ module BackgroundQueue::ServerLib
           raise BackgroundQueue::LoadError, "Error loading 'jobs' entry in background queue server configuration file #{full_path(path)}: invalid data type (#{jobs_entry.class.name}), expecting Array (of jobs)"
         end
       end
+      
+      def get_task_file_entry(env_config, path)
+        task_file = BackgroundQueue::Utils.get_hash_entry(env_config, :task_file)
+        if task_file && task_file.kind_of?(String)
+          task_file.strip!
+          #make sure the file exists of the directory is writable
+          if !File.exist?(task_file)
+            dir = File.dirname(task_file)
+            if !File.exist?(dir)
+              #check if we can create the directory
+              begin
+                FileUtils.mkdir_p dir
+              rescue Exception=>e
+                raise BackgroundQueue::LoadError, "Error loading 'task_file' entry in background queue server configuration file #{full_path(path)}: unable to create directory #{dir} (#{e.message})"
+              end
+            else
+              #check if we can write in the directory
+              begin
+                FileUtils.touch task_file
+              rescue Exception=>e
+                raise BackgroundQueue::LoadError, "Error loading 'task_file' entry in background queue server configuration file #{full_path(path)}: unable to write to file #{task_file} (#{e.message})"
+              end
+              FileUtils.rm task_file
+            end
+          end
+          task_file
+        elsif task_file
+          raise BackgroundQueue::LoadError, "Error loading 'task_file' entry in background queue server configuration file #{full_path(path)}: Invalid data type (#{task_file.class.name}), expecting String"
+        else
+          nil
+        end
+      end
     end
     
     
     #do not call this directly, use a load_* method
-    def initialize(workers, secret, address, connections_per_worker, jobs, system_task_options)
+    def initialize(workers, secret, address, connections_per_worker, jobs, system_task_options, task_file)
       @workers = workers
       @secret = secret
       @address = address
       @connections_per_worker = connections_per_worker
       @jobs = jobs
       @system_task_options = system_task_options
+      @task_file = task_file
     end
     
     class Address

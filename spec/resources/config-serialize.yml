@@ -1,0 +1,12 @@
+development:
+  address: 
+    host: 127.0.0.1
+    port: 3000
+  workers: 
+  - http://127.0.0.1:8001/background_queue
+  secret: this_is_used_to_make_sure_it_is_secure
+  connections_per_worker: 10
+  system_task_options:
+    domain: the_default_domain
+  task_file: /tmp/bq_tasks
+

@@ -53,14 +53,26 @@ describe "Client" do
     
     context "single call commands" do
       before do
-        subject.should_receive(:send_command).with(anything) { [true, :server] }
+        subject.should_receive(:send_command).with(any_args) { [true, :server] }
       end
-      it "can build and send an add task command" do
-        subject.add_task(:worker, :owner_id, :job_id, :task_id, {}, {} ).should eq([true, :server])
+      
+      context "#add_task" do
+        it "can build and send an add task command" do
+          job_handle = subject.add_task(:worker, :owner_id, :job_id, :task_id, 1, {}, {} )
+          job_handle.owner_id.should eq(:owner_id)
+          job_handle.job_id.should eq(:job_id)
+          job_handle.server.should eq(:server)
+        end
+        
+        it "will dynamically generate a job id/task id if not passed" do
+          subject.should_receive(:generate_ids).and_return([:jjj, :ttt])
+          job_handle = subject.add_task(:worker, :owner_id, nil, nil, 1, {}, {} )
+          job_handle.job_id.should eq(:jjj)
+        end
       end
       
       it "can build and send an add tasks command" do
-        subject.add_tasks(:worker, :owner_id, :job_id, :tasks, {}, {} ).should eq([true, :server])
+        subject.add_tasks(:worker, :owner_id, :job_id, :tasks, 1, {}, {} ).should eq([true, :server])
       end
       
       
@@ -70,11 +82,13 @@ describe "Client" do
       
     end
     
+    
     context "#get_status" do
       it "passes the requested server" do
+        job_handle = double("jh", :server=>:another_server, :job_id=>:job_id)
         BackgroundQueue::ClientLib::Command.should_receive(:get_status_command).with(:job_id, {} ).and_return(:cmd)
         subject.should_receive(:send_command).with(:cmd, :another_server) { [true, :another_server] }
-        subject.get_status(:job_id, {}, :another_server).should eq([true, :another_server])
+        subject.get_status(job_handle, {}).should eq(true)
       end
     end
   end

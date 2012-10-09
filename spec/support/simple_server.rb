@@ -20,5 +20,9 @@ class SimpleServer
   def running?
     true
   end
+  
+  def change_stat(stat, delta)
+    
+  end
  
 end

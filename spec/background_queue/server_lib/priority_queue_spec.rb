@@ -163,4 +163,20 @@ describe "Priority Queue" do
     end
       
   end
+  
+  context "#each_item" do
+    
+    subject { BackgroundQueue::ServerLib::PriorityQueue.new }
+    
+    it "will iterate accross the items" do
+      subject.push(SimpleItem.new(2, 2))
+      subject.push(SimpleItem.new(3, 3))
+      subject.push(SimpleItem.new(4, 2))
+      
+      found = []
+      subject.each_item { |item| found << item.id }
+      
+      found.should eq([2,4,3])
+    end
+  end
 end

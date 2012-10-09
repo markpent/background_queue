@@ -14,6 +14,12 @@ module BackgroundQueue::ServerLib
     
     def initialize
       @running = false
+      @stat_mutex = Mutex.new
+      @stats = {
+        :tasks=>0,
+        :run_tasks=>0,
+        :running=>0
+      }
     end
     
     def process_args(argv)
@@ -207,13 +213,55 @@ module BackgroundQueue::ServerLib
       
       @jobs = BackgroundQueue::ServerLib::JobRegistry.new
       
+      load_tasks(config.task_file)
+      
       @event_server.start
     end
     
-    def stop
+    def stop(timeout_secs=10)
       @running = false
       @event_server.stop
-      @thread_manager.wait
+      @thread_manager.wait(timeout_secs)
+      save_tasks(config.task_file)
+    end
+    
+    def change_stat(stat, delta)
+      @stat_mutex.synchronize {
+        @stats[stat] += delta
+      }
+    end
+    
+    def get_stats
+      @stat_mutex.synchronize {
+         @stats.clone
+      }
+    end
+    
+    def load_tasks(path)
+      return if path.nil?
+      if File.exist?(path)
+        begin
+          File.open(path, 'r') { |io| 
+            task_queue.load_from_file(io)
+          }
+        rescue Exception=>e
+          logger.error("Error loading tasks from #{path}: #{e.message}")
+          logger.debug(e.backtrace.join("\n"))
+        end
+      end
+    end
+    
+    def save_tasks(path)
+      return if path.nil?
+      
+      begin
+        File.open(path, 'w') { |io| 
+          task_queue.save_to_file(io)
+        }
+      rescue Exception=>e
+        logger.error("Error saving tasks to #{path}: #{e.message}")
+        logger.debug(e.backtrace.join("\n"))
+      end
     end
   end
 end

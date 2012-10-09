@@ -315,6 +315,80 @@ describe "Server Config" do
       
     end
     
+    context "#get_task_file_entry" do
+      before do
+        File.stub(:expand_path) { :expanded_path }
+      end
+      
+      it "creates a task_file entry if the file exists" do
+        File.should_receive(:exist?).with('path').and_return(true)
+        entry = BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>'path'}, :path)
+        entry.should eq('path')
+      end
+      
+      it "creates a task_file entry if the directory is writable" do
+        File.should_receive(:exist?).with('path').and_return(false)
+        File.should_receive(:dirname).with('path').and_return('dir')
+        File.should_receive(:exist?).with('dir').and_return(true)
+        FileUtils.should_receive(:touch).with('path')
+        FileUtils.should_receive(:rm).with('path')
+        entry = BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>'path'}, :path)
+        entry.should eq('path')
+      end
+      
+      it "creates a task_file entry if the directory can be created" do
+        File.should_receive(:exist?).with('path').and_return(false)
+        File.should_receive(:dirname).with('path').and_return('dir')
+        File.should_receive(:exist?).with('dir').and_return(false)
+        FileUtils.should_receive(:mkdir_p).with('dir')
+        entry = BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>'path'}, :path)
+        entry.should eq('path')
+      end
+      
+      it "errors if the directory can not be created" do
+        File.should_receive(:exist?).with('path').and_return(false)
+        File.should_receive(:dirname).with('path').and_return('dir')
+        File.should_receive(:exist?).with('dir').and_return(false)
+        FileUtils.should_receive(:mkdir_p).with('dir').and_raise("Permission Denied")
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>'path'}, :path)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'task_file' entry in background queue server configuration file expanded_path: unable to create directory dir (Permission Denied)"
+        )
+      end
+      
+      it "errors if the directory can not be written to" do
+        File.should_receive(:exist?).with('path').and_return(false)
+        File.should_receive(:dirname).with('path').and_return('dir')
+        File.should_receive(:exist?).with('dir').and_return(true)
+        FileUtils.should_receive(:touch).with('path').and_raise("Permission Denied")
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>'path'}, :path)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'task_file' entry in background queue server configuration file expanded_path: unable to write to file path (Permission Denied)"
+        )
+      end
+
+      it "errors if invalid type" do
+        expect { 
+          BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>123}, :path)
+        }.to raise_error(
+          BackgroundQueue::LoadError, 
+          "Error loading 'task_file' entry in background queue server configuration file expanded_path: Invalid data type (Fixnum), expecting String"
+        )
+      end
+      
+      it "allows if missing or nil" do
+        
+        BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({:task_file=>nil}, :path).should eq(nil)
+        BackgroundQueue::ServerLib::Config.__prv__get_task_file_entry({}, :path).should eq(nil)
+        
+      end
+      
+    end
+    
 
     context "creating Config entry" do
       before do

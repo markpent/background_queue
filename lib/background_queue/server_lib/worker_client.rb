@@ -14,7 +14,7 @@ module BackgroundQueue::ServerLib
       @current_task = task
       req = build_request(worker.uri, task, secret)
       begin
-        Net::HTTP.start(worker.uri.host, worker.uri.port) do |server|
+        Net::HTTP.start(worker.uri.host, worker.uri.port)  do |server|
           server.request(req) do |response|
             read_response(worker, response, task)
           end
@@ -31,7 +31,7 @@ module BackgroundQueue::ServerLib
     
     def build_request(uri, task, secret)
       req = Net::HTTP::Post.new(uri.path)
-      req.set_form_data({:task=>task.to_json, :auth=>secret})
+      req.set_form_data({:task=>task.to_json, :auth=>secret, :server_port=>@server.config.address.port})
       req["host"] = task.domain
       req
     end
@@ -54,6 +54,7 @@ module BackgroundQueue::ServerLib
     end
     
     def process_chunk(chunk, task)
+      #puts "process_chunk: #{chunk}"
       chunk.each_line do |line|
         unless @prev_chunk.nil?
           line = @prev_chunk + line

@@ -51,6 +51,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
       server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
+      server.task_queue.should_receive(:finish_item).with(task)
       subject.call_worker(task).should be_true
     end
     
@@ -71,6 +72,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       server.workers.should_receive(:get_next_worker).twice.and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, false)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
+      server.task_queue.should_receive(:finish_item).with(task)
       subject.call_worker(task).should be_true
     end
     
@@ -86,12 +88,16 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       Kernel.should_receive(:sleep).with(1)
       BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
+      server.task_queue.should_receive(:finish_item).with(task)
       subject.call_worker(task).should be_true
     end
     
     it "will stop trying if the server is not running" do
       server.stub('running?'=>false)
-      subject.call_worker(DefaultTask.new).should be_false
+      task = DefaultTask.new
+      server.task_queue.should_receive(:finish_item).with(task)
+      server.task_queue.should_receive(:add_task).with(task)
+      subject.call_worker(task).should be_false
     end
   end
   

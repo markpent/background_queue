@@ -21,6 +21,11 @@ module BackgroundQueue::ClientLib
       BackgroundQueue::Command.new(:get_status, options, {:job_id=>job_id})
     end
     
+    #create an 'stats' command
+    def self.stats_command(options={})
+      BackgroundQueue::Command.new(:stats, options, {})
+    end
+    
     #create a 'remove tasks' command
     #is this needed?
     #def self.remove_tasks_command(tasks, options={})

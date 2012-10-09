@@ -4,14 +4,14 @@ require 'background_queue_server'
 
 describe BackgroundQueue::ServerLib::WorkerClient do
 
-  subject { BackgroundQueue::ServerLib::WorkerClient.new(SimpleServer.new) }
+  subject { BackgroundQueue::ServerLib::WorkerClient.new(SimpleServer.new({:config=>double("cfg", {:address=>double("addr", {:port=>123})} )})) }
   
   
   context "#build_request" do
     it "builds a request payload from a task" do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
       task.should_receive(:to_json).and_return(:the_json)
-      Net::HTTP::Post.any_instance.should_receive(:set_form_data).with({:task=>:the_json, :auth=>"auth"})
+      Net::HTTP::Post.any_instance.should_receive(:set_form_data).with({:task=>:the_json, :auth=>"auth", :server_port=>123})
       Net::HTTP::Post.any_instance.should_receive("[]=".intern).with("host", "www.example.com")
       Net::HTTP::Post.any_instance.should_receive("[]=".intern).with(any_args).at_least(:once)
       request = subject.__prv__build_request(URI("http://127.0.0.1:3000/worker/run"), task, "auth")
@@ -107,6 +107,88 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       task.should_receive(:set_worker_status).with(:kstatus)
       subject.__prv__set_worker_status(:status, task)
     end
+  end
+  
+  
+  context "can handle thread cancelling" do
+    #this can cause issues with other tests....
+    xit "will return false if exception raised" do
+      
+      mutex = Mutex.new
+      resource = ConditionVariable.new
+      
+      mutex2 = Mutex.new
+      resource2 = ConditionVariable.new
+
+      run_request = false
+      ss = TestWorkerServer.new(8001)
+      ss.start(Proc.new { |controller|
+        #puts "in proc"
+          
+        mutex2.synchronize {
+          resource2.signal
+        }
+        #puts "in proc: waiting" 
+        mutex.synchronize {
+          resource.wait(mutex)
+        }
+        #puts "waited"
+        run_request = true
+        controller.render :text =>{:percent=>100, :caption=>"Done"}.to_json, :type=>"text/text"
+      })
+      
+      
+      uri = URI("http://127.0.0.1:8001/background_queue")
+      worker_config = BackgroundQueue::ServerLib::Worker.new(uri)
+      task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
+      
+      call_result = nil
+      t1 = Thread.new {
+        #puts "calling"
+        begin
+          status = Timeout::timeout(2) {
+            call_result = subject.send_request(worker_config, task, "abcd")
+           # puts "called"
+          }
+        rescue Timeout::Error=>te
+          #puts "timeout"
+          call_result = :timeout
+        end
+        mutex2.synchronize {
+          resource2.signal
+        }
+      }
+
+      #wait until we know the request has been sent and is processing
+      mutex2.synchronize {
+        resource2.wait(mutex2)
+      }
+      run_request.should be_false
+      #puts "cancelling"
+      t1.raise "Cancelling From Thread"
+      
+      #puts "canceled"
+      #wait until we know the request has been cancelled
+      mutex2.synchronize {
+        resource2.wait(mutex2)
+      }
+      call_result.should be_false
+      run_request.should be_false
+
+      mutex.synchronize {
+        resource.signal
+      }
+     
+      
+      t1.join
+      ss.stop
+      
+    end
+    
+    it "will do nothing if not started" do
+      
+    end
+    
   end
   
   

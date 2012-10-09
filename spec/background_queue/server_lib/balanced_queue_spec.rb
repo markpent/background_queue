@@ -81,5 +81,42 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
     
   end
   
+  context "#save_to_file" do
+    it "will write the tasks as json to file" do
+      subject.stub(:register_job)
+      thread_manager.stub(:signal_access)
+
+      t1 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :task_id, 1, :worker, {:a=>'b'}, {:c=>'d'})
+      t2 = BackgroundQueue::ServerLib::Task.new(:owner2_id, :job2_id, :task2_id, 2, :worker, {}, {})
+      t3 = BackgroundQueue::ServerLib::Task.new(:owner3_id, :job3_id, :task3_id, 3, :worker, {}, {})
+      subject.add_task(t1)
+      subject.add_task(t2)
+      subject.add_task(t3)
+      sio = StringIO.new
+      subject.save_to_file(sio)
+
+      sio.string.should eq([t1.to_json_object(true),t2.to_json_object(true),t3.to_json_object(true)].to_json)
+    end
+  end
+  
+  context "#load_from_file" do
+    it "will load the tasks as json from file" do
+      subject.stub(:register_job)
+      thread_manager.stub(:signal_access)
+
+      t1 = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :task_id, 1, :worker, {:a=>'b'}, {:c=>'d'})
+      t2 = BackgroundQueue::ServerLib::Task.new(:owner2_id, :job2_id, :task2_id, 2, :worker, {}, {})
+      t3 = BackgroundQueue::ServerLib::Task.new(:owner3_id, :job3_id, :task3_id, 3, :worker, {}, {})
+      
+      sio = StringIO.new([t1.to_json_object(true),t2.to_json_object(true),t3.to_json_object(true)].to_json)
+      subject.load_from_file(sio)
+
+      sio = StringIO.new
+      subject.save_to_file(sio)
+
+      sio.string.should eq([t1.to_json_object(true),t2.to_json_object(true),t3.to_json_object(true)].to_json)
+    end
+  end
+  
 
 end

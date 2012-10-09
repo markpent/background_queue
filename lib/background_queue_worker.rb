@@ -1,0 +1,5 @@
+require "background_queue/worker/base"
+require "background_queue/worker/environment"
+require "background_queue/worker/worker_loader"
+require "background_queue/worker/calling"
+require "background_queue/worker/config"

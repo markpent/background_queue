@@ -15,30 +15,32 @@ In your environment, initialize a constant BackgroundQueue::Client
 Now you can use your BG\_QUEUE to add a single task. Note: the "task_id" should be unique, even between owners/jobs. If there is an existing task with the same id in any queue,
 even if its a different owner/job, the existing task will be removed before this task is added the the ownerjob queue.
 
-     BG_QUEUE.add_task(:worker_name, "owner identifier", "job identifier", "task_id", {:some_task=>:params}, {:priority=>1})
+     job_handle = BG_QUEUE.add_task(:worker_name, "owner identifier", "job identifier", "task_id", priority, {:some_task=>:params}, {:priority=>1})
   
   
 ### Starting multiple tasks
 Or you can queue multiple tasks at once. 
 
-     BG_QUEUE.add_tasks(:worker_name, "owner identifier", "job identifier", [["task1_id" , {:some_task=>:params}], ["task2_id" , {:some_task=>:params}]], {:shared=>:params}, {:priority=>1})
+     job_handle = BG_QUEUE.add_tasks(:worker_name, "owner identifier", "job identifier", [["task1_id" , {:some_task=>:params}], ["task2_id" , {:some_task=>:params}]], priority, {:shared=>:params}, {:priority=>1})
 
-### Removing tasks
-Sometimes a task needs to be removed or stopped. Only the task\_id is needed because they are globally unique.
+### Job Status
+Get the status of the job
 
-    BG_QUEUE.remove_tasks(["task1_id", "task2_id"])
+    status = BG_QUEUE.get_status(job_handle)
 
 
 ## Queue Management
-* Each task on the queue is associated with an 'owner', 'subject' and 'id'
-* Each subject has a priority (0=highest).
-* An 'owner' has a queue of 'subjects' which is a queue of tasks.
+* Each task on the queue is associated with an 'owner', 'job' and 'id'
+* Each job has a priority (0=highest).
+* An 'owner' has a queue of 'job' which is a list of tasks.
+* Status is tracked per job.
+* Tasks within a job can be weighted.
 
 ### Finding the next task to run
 1. Get the next owner with the highest priority subject
-2. Get the next subject within the above owner with the highest priority
-3. Pop the next task off the subject queue.
-4. Push the subject to the end of the owners subject queue.
+2. Get the next job within the above owner with the highest priority
+3. Pop the next task off the job queue.
+4. Push the job to the end of the owners job queue.
 5. Push the owner to the end of the queue.
 
 ## Worker Managment
@@ -46,7 +48,7 @@ Sometimes a task needs to be removed or stopped. Only the task\_id is needed bec
 * The queue calls the passenger server(s) through HTTP.
 * The queue limits the number of simultaneous workers at any one time.
 * Using passenger to manage the workers means workers are efficiently re-used, with a full Rails enviroment loaded and ready to go.
-* Library methods are called from within the worker to co-ordinate the status of the worker.
+* The status of the task is streamed to the queue manager. 
 
 
 

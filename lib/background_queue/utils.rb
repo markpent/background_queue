@@ -31,6 +31,10 @@ module BackgroundQueue
       def []=(key, value)
         @hash[key] = value
       end
+      
+      def to_json(dummy=true)
+        @hash.to_json
+      end
     end
   end
 end

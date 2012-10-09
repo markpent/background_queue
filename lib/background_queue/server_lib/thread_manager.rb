@@ -83,7 +83,7 @@ class BackgroundQueue::ServerLib::ThreadManager
     }
   end
   
-  def wait
+  def wait(timeout_limit = 100)
     #for thread in @threads
       @mutex.synchronize {
         @condvar.broadcast
@@ -95,8 +95,27 @@ class BackgroundQueue::ServerLib::ThreadManager
     #  }
     #  sleep(0.01)
     #end
-    for thread in @threads
-      thread.join
+    begin
+      Timeout::timeout(timeout_limit) {
+        for thread in @threads
+          thread.join
+        end
+      }
+    rescue Timeout::Error => te
+      for thread in @threads
+        begin
+          if thread.alive?
+            thread.raise BackgroundQueue::ServerLib::ThreadManager::ForcedStop.new("Timeout when forcing threads to stop")
+          end
+        rescue Exception=>e
+          #ignore
+        end
+      end
     end
+  end
+  
+  #Error raised when unable to load configuration
+  class ForcedStop < Exception
+
   end
 end

@@ -2,8 +2,12 @@ require 'webrick'
 
 class TestWorkerServer
 
-  def initialize(port)
-    @port = port  
+  
+  attr_reader :control_calling
+  
+  def initialize(port, control_calling = false)
+    @port = port
+    @control_calling = control_calling
   end
   
   def start(proc)
@@ -12,6 +16,11 @@ class TestWorkerServer
     @mutex = Mutex.new
     @condvar = ConditionVariable.new
     @called = false
+    if @control_calling
+      @cmutex = Mutex.new
+      @ccondvar = ConditionVariable.new
+      @ccalled = false
+    end
     
     @thread = Thread.new {
       @server.start
@@ -27,11 +36,15 @@ class TestWorkerServer
   end
   
   def wait_to_be_called
+    was_called = false
     @mutex.synchronize {
       unless @called
         @condvar.wait(@mutex, 5)
       end
-      @called
+      was_called = @called
+      @called = false
+      #puts "called=#{was_called}"
+      was_called
     }
   end
   
@@ -39,6 +52,25 @@ class TestWorkerServer
     @mutex.synchronize {
       @called = true
       @condvar.signal
+    }
+  end
+  
+  def can_to_be_called?
+    was_called = false
+    @cmutex.synchronize {
+      unless @ccalled
+        @ccondvar.wait(@cmutex, 5)
+      end
+      was_called = @ccalled
+      @ccalled = false
+      was_called
+    }
+  end
+  
+  def allow_to_be_called
+    @cmutex.synchronize {
+      @ccalled = true
+      @ccondvar.signal
     }
   end
   
@@ -54,10 +86,120 @@ class TestWorkerServer
 
   
     def do_POST(request, response)
-      @proc.call(request, response)
-      @test_server.mark_as_called
+      begin
+        response.test_server = @test_server
+        @test_server.can_to_be_called? if @test_server.control_calling
+        @proc.call(TestWorkerServer::Contoller.new(request, response))
+      rescue Exception=>e
+        puts e.message
+        puts e.backtrace.join("\n")
+      end
     end
   
   end
+  
+  class Contoller
+    
+    attr_accessor :request
+    attr_accessor :response
+    attr_accessor :params
+      
+    def initialize(request, response)
+      @request = request
+      @response = response
+      @logger = WEBrick::BasicLog.new("/tmp/bq-controller.log", 5)
+      @params = BackgroundQueue::Utils::AnyKeyHash.new(@request.query)
+    end
+    
+    def headers
+      @response.header
+    end
+    
+    def logger
+      @logger
+    end
+    
+    def render(opts)
+      @response.status = opts[:status] if opts[:status]
+      @response.content_type = opts[:type] if opts[:type]
+       
+       
+      if opts[:text].instance_of?(String)
+        @response.body = opts[:text]
+      elsif opts[:text].instance_of?(Proc)
+        @response.chunked = true
+        @response.body = opts[:text]
+      end
+    end
+    
+  end
 
 end
+
+module WEBrick
+  class HTTPResponse
+    
+    attr_accessor :test_server
+    
+    alias_method :old_send_response, :send_response
+    
+    def send_response(socket)
+      old_send_response(socket)
+      socket.extend SocketExtension
+      socket.set_test_server(@test_server)
+    end
+    
+    alias_method :old_send_body, :send_body
+   
+    def send_body(socket)
+      if @body.instance_of?(Proc)
+        begin
+          @body.call(self, ChunkedOutput.new(socket, self))
+          _write_data(socket, "0#{CRLF}#{CRLF}")
+        rescue Exception=>e
+          puts e.message
+          puts e.backtrace.join("\n")
+        end
+      else
+        old_send_body(socket)
+      end
+    end
+    
+    def send_chunked_data(socket, buf)
+      data = ""
+      data << format("%x", buf.size) << CRLF
+      data << buf << CRLF
+      _write_data(socket, data)
+      @sent_size += buf.size
+    end
+  end
+end
+
+class ChunkedOutput
+  
+  def initialize(socket, response)
+    @socket = socket
+    @response = response
+  end
+  
+  def write(buf)
+    @response.send_chunked_data(@socket, buf)
+  end
+  
+  def flush
+    @socket.flush
+  end
+end
+
+module SocketExtension
+  
+  def set_test_server(ts)
+    @test_server = ts
+  end
+  
+  def close
+    super
+    @test_server.mark_as_called unless @test_server.nil?
+  end
+end
+  

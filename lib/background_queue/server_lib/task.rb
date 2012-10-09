@@ -24,6 +24,18 @@ module BackgroundQueue::ServerLib
       @params = params
     end
     
+    def to_json(dummy=true)
+      to_json_object(false).to_json
+    end
+    
+    def to_json_object(full)
+      jo = {:owner_id=>@owner_id, :job_id=>@job_id, :id=>@id, :priority=>@priority, :worker=>@worker, :params=>@params }
+      if full
+        jo[:options] = @options
+      end
+      jo
+    end
+    
     def running?
       @running
     end
@@ -44,10 +56,23 @@ module BackgroundQueue::ServerLib
       @options[:synchronous] == true
     end
     
+    def weighted?
+      @options[:weight] && @options[:weight] > 0
+    end
+    
+    def weighted_percent
+      @options[:weight]
+    end
+    
+    def initial_progress_caption
+      @options[:initial_progress_caption]
+    end
+    
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?
       status[:task_id] = self.id
       status[:exclude] = self.is_excluded_from_count?
+      status[:weight] = self.weighted_percent if self.weighted?
       @job.set_worker_status(status)
     end
   end

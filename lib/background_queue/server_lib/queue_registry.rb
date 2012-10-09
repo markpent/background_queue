@@ -44,6 +44,7 @@ module BackgroundQueue::ServerLib
     end
     
     def finish_item(item)
+      #puts "#{self.class.name}:finish item: #{item.inspect}"
       in_queue, queue = get_queue(get_queue_id_from_item(item), false)
       raise "Queue #{get_queue_id_from_item(item)} unavailble when finishing item" if queue.nil?
       queue.finish_item(item)
@@ -93,6 +94,7 @@ module BackgroundQueue::ServerLib
     
     def stall_queue(queue)
       queue.stalled = true
+      #puts "stalling queue #{queue.inspect}"
       @stalled_items[queue.id] = queue
     end
     
@@ -102,9 +104,11 @@ module BackgroundQueue::ServerLib
         unless queue.empty? 
           queue.stalled = false
           push(queue)
-        #  puts "returned q: #{queue.inspect}"
-        #else
-        #  puts "q empty"
+          @items[queue.id] = queue
+          #puts "returned q: #{queue.inspect}"
+        else
+          @items.delete(queue.id)
+          #puts "q empty"
         end
       #else
       #  puts "q not stalled"

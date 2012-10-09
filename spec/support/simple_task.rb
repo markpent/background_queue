@@ -43,4 +43,16 @@ class SimpleTask
   def is_excluded_from_count?
     @options[:exclude] == true
   end
+  
+  def weighted?
+    @options[:percent] && @options[:percent] > 0
+  end
+  
+  def weighted_percent
+    @options[:percent]
+  end
+  
+  def initial_progress_caption
+    @options[:initial_progress_caption]
+  end
 end

@@ -80,6 +80,8 @@ module BackgroundQueue::ServerLib
         process_remove_tasks_command(command)
       when 'get_status'
         process_get_status_command(command)
+      when 'stats'
+        process_stats_command(command)
       else
         raise "Unknown command: #{command.code.inspect}"
       end
@@ -89,10 +91,12 @@ module BackgroundQueue::ServerLib
       @server.logger.debug("add_task: #{command.args[:owner_id]}, #{command.args[:job_id]}, #{command.args[:task_id]}")
       task = BackgroundQueue::ServerLib::Task.new(command.args[:owner_id], command.args[:job_id], command.args[:task_id], command.args[:priority], command.args[:worker], command.args[:params], command.options)
       server.task_queue.add_task(task)
+      @server.change_stat(:tasks, 1)
       build_simple_command(:result, "ok")
     end
     
     def process_add_tasks_command(command)
+      @server.logger.debug("add_tasks: #{command.args[:owner_id]}, #{command.args[:job_id]}, #{command.args[:tasks].inspect}")
       shared_params = command.args[:shared_parameters]
       shared_params = {} if shared_params.nil?
       owner_id = command.args[:owner_id]
@@ -108,6 +112,7 @@ module BackgroundQueue::ServerLib
         task = BackgroundQueue::ServerLib::Task.new(owner_id, job_id, task_data[0], priority, worker, merged_params, command.options)
         server.task_queue.add_task(task)
       end
+      @server.change_stat(:tasks, command.args[:tasks].length)
       build_simple_command(:result, "ok")
     end
     
@@ -118,6 +123,10 @@ module BackgroundQueue::ServerLib
       else
         BackgroundQueue::Command.new(:status, {}, job.get_current_progress)
       end
+    end
+    
+    def process_stats_command(command)
+      BackgroundQueue::Command.new(:stats, {}, @server.get_stats)
     end
   
   end
