@@ -345,7 +345,7 @@ describe BackgroundQueue::ServerLib::Server do
     end
     
     it "will display any error and exit" do
-      subject.should_receive(:load_configuration).and_raise("some_error")
+      subject.should_receive(:load_configuration).and_raise(BackgroundQueue::ServerLib::InitError.new("some_error"))
       STDERR.should_receive(:puts).with("some_error")
       subject.start({:command=>:run})
     end

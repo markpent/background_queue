@@ -30,12 +30,12 @@ describe "Serialize Test" do
       thread = Thread.new {
         server.start(:config=>config_path, :skip_pid=>true, :command=>:run, :log_file=>"/tmp/bq.log", :log_level=>'debug')
       }
-
       while server.event_server.nil? || !server.event_server.running
         sleep(0.1)
       end
       
       stopped = false
+      ss = nil
       begin
 
         
@@ -118,6 +118,7 @@ describe "Serialize Test" do
           server.stop
           thread.join
         end
+        ss.stop unless ss.nil?
       end
     end
     

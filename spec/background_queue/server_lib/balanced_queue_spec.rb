@@ -51,7 +51,7 @@ describe BackgroundQueue::ServerLib::BalancedQueue do
       
       it "adds a task with existing id thats not running" do
         BackgroundQueue::ServerLib::TaskRegistry.any_instance.should_receive(:register).with(anything).and_return([:existing, :existing_task])
-        subject.should_receive(:remove_task).with(:existing_task)
+        subject.should_receive(:remove_item).with(:existing_task)
         subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3))
       end
     end

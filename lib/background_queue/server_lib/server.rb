@@ -25,8 +25,15 @@ module BackgroundQueue::ServerLib
     def process_args(argv)
       argv = argv.clone
       cmd = argv.shift
-      options = {:command=>cmd.downcase.intern}
-     
+      
+      if cmd.nil?
+        raise BackgroundQueue::ServerLib::InitError, "Usage: server command [options]"
+      end
+      
+      options = {:command=>cmd.nil? ? nil : cmd.downcase.intern}
+      
+      env_to_load = "development"
+      
       OptionParser.new do |opts|
         opts.banner = "Usage: server command [options]"
         case options[:command]
@@ -35,7 +42,9 @@ module BackgroundQueue::ServerLib
               options[:config] = cp
             end
           when :stop
-        
+            
+          when nil
+              
           else
             raise "Invalid Command: #{cmd}"
         end
@@ -45,12 +54,17 @@ module BackgroundQueue::ServerLib
         opts.on("-v", "--loglevel [LEVEL]", "Log Level") do |ll|
           options[:log_level] = ll
         end
-        opts.on("-p", "--pidfile [PATH]", "Pid file Path") do |pf|
+        opts.on("-p", "--pidfile [PATH]", "Pid file Path (/var/run/background_queue.pid)") do |pf|
           options[:pid_file] = pf
+        end
+        opts.on("-e", "--environment [RAILS_ENV]", "testing/development/production (development)") do |env|
+          env_to_load = env
         end
       end.parse!(argv)
       
-      raise "Missing config argument (-c)" if options[:config].nil? && ([:test, :start].include?(options[:command]) )
+      ENV['RAILS_ENV']=env_to_load
+      
+      raise BackgroundQueue::ServerLib::InitError, "Missing config argument (-c)" if options[:config].nil? && ([:test, :start].include?(options[:command]) )
     
       options
     end
@@ -82,7 +96,7 @@ module BackgroundQueue::ServerLib
       when 'fatal'
         log.level = Logger::FATAL
       else
-        raise "Unknown logging level: #{level}"
+        raise BackgroundQueue::ServerLib::InitError, "Unknown logging level: #{level}"
       end
     end
     
@@ -93,7 +107,7 @@ module BackgroundQueue::ServerLib
           @logger = Logger.new(path, "daily")
           set_logging_level(@logger, level)
         rescue Exception=>e
-          raise "Error initializing log file #{path}: #{e.message}"
+          raise BackgroundQueue::ServerLib::InitError, "Error initializing log file #{path}: #{e.message}"
         end
       end
       if @logger.nil?
@@ -132,8 +146,25 @@ module BackgroundQueue::ServerLib
     
     def check_not_running(options)
       proc_id = get_pid(options)
-      raise "Process #{proc_id} already running" unless proc_id.nil?
+      raise BackgroundQueue::ServerLib::InitError, "Process #{proc_id} already running" unless proc_id.nil?
       nil
+    end
+    
+    def stop_pid(options)
+      proc_id = get_pid(options)
+      unless proc_id.nil?
+        begin
+          Process.kill(15, proc_id) 
+        rescue 
+          #dont care... the process may have died already?
+        end
+        count = 0
+        while get_pid(options) && count < 10
+          puts "Waiting..."
+          sleep(1)
+        end
+        kill_pid(options) #make sure
+      end
     end
     
     def kill_pid(options)
@@ -152,7 +183,7 @@ module BackgroundQueue::ServerLib
           f.write(proc_id.to_s)
         }
       rescue Exception=>e
-        raise "Unable to write to pid file #{get_pid_path(options)}: #{e.message}"
+        raise BackgroundQueue::ServerLib::InitError, "Unable to write to pid file #{get_pid_path(options)}: #{e.message}"
       end
     end
     
@@ -160,6 +191,13 @@ module BackgroundQueue::ServerLib
       begin
         File.delete(get_pid_path(options))
       rescue 
+      end
+    end
+    
+    def trap_signals
+      Signal.trap("TERM") do
+        puts "Terminating..."
+        self.stop()
       end
     end
     
@@ -173,6 +211,7 @@ module BackgroundQueue::ServerLib
         STDOUT.reopen stdout
         STDERR.reopen stderr
         fork{
+          write_pid(options) unless options[:skip_pid]
           run(options)
         } and exit!
       }
@@ -183,16 +222,19 @@ module BackgroundQueue::ServerLib
         load_configuration(options[:config])
         init_logging(options[:log_file], options[:log_level])
         check_not_running(options) unless options[:skip_pid]
-        write_pid(options) unless options[:skip_pid]
+        write_pid(options) unless options[:skip_pid] #this will make sure we can write the pid file... the daemon will write it again
         if options[:command] == :start
           daemonize(options)
         elsif options[:command] == :run
           run(options)
         else
-          raise "Unknown Command: #{options[:command]}"
+          raise BackgroundQueue::ServerLib::InitError, "Unknown Command: #{options[:command]}"
         end
+      rescue BackgroundQueue::ServerLib::InitError=>ie
+        STDERR.puts ie.message
       rescue Exception=>e
         STDERR.puts e.message
+        STDERR.puts e.backtrace.join("\n")
       end
     end
     
@@ -201,6 +243,7 @@ module BackgroundQueue::ServerLib
     end
     
     def run(options)
+      trap_signals
       @running = true
       @thread_manager = BackgroundQueue::ServerLib::ThreadManager.new(self, self.config.connections_per_worker)
       
@@ -263,5 +306,9 @@ module BackgroundQueue::ServerLib
         logger.debug(e.backtrace.join("\n"))
       end
     end
+  end
+  
+  class InitError < Exception
+    
   end
 end
