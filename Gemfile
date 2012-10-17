@@ -6,6 +6,8 @@ gem "json"
 gem "rufus-scheduler"
 gem "eventmachine", "~>0.12.10"
 gem "ipaddress", "~> 0.8.0"
+gem "ipaddress", "~> 0.8.0"
+gem "algorithms", "~> 0.5.0"
   
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
