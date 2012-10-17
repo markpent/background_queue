@@ -111,6 +111,16 @@ class BackgroundQueue::ServerLib::ThreadManager
           #ignore
         end
       end
+      
+      begin
+        Timeout::timeout(timeout_limit) {
+          for thread in @threads
+            thread.join
+          end
+        }
+      rescue Timeout::Error => te2
+        @server.logger.error("Timeout while waiting for forced stop threads to finish")
+      end
     end
   end
   

@@ -267,6 +267,7 @@ module BackgroundQueue::ServerLib
       @running = false
       @event_server.stop
       @thread_manager.wait(timeout_secs)
+      @error_tasks.flush
       save_tasks(config.task_file)
     end
     
