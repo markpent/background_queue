@@ -49,6 +49,7 @@ module BackgroundQueue::ServerLib
         send_result(result)
       rescue Exception=>e
         @server.logger.error("Error processing command: #{e.message}")
+        @server.logger.debug(e.backtrace.join("\n"))
         send_error(e.message)
       end
     end

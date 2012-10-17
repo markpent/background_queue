@@ -9,7 +9,7 @@ Dir["#{File.dirname(__FILE__)}/support/**/*.rb"].each {|f| require f}
 Dir["#{File.dirname(__FILE__)}/shared/**/*.rb"].each {|f| require f}
 
 RSpec.configure do |config|
-  
+  #config.filter_run_excluding :can_be_flakey => true
 end
 
 
