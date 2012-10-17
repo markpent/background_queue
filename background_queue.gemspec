@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "background_queue"
-  s.version = "0.2.0"
+  s.version = "0.3.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["MarkPent"]
-  s.date = "2012-10-09"
+  s.date = "2012-10-17"
   s.description = "Organise background tasks so they will not overload the machine(s) running the tasks, while still giving a fair, balanced allocation of running time to members in the queue"
   s.email = "mark.pent@gmail.com"
   s.executables = ["bg_queue"]
@@ -40,6 +40,7 @@ Gem::Specification.new do |s|
     "lib/background_queue/config.rb",
     "lib/background_queue/server_lib/balanced_queue.rb",
     "lib/background_queue/server_lib/config.rb",
+    "lib/background_queue/server_lib/error_task_list.rb",
     "lib/background_queue/server_lib/event_connection.rb",
     "lib/background_queue/server_lib/event_server.rb",
     "lib/background_queue/server_lib/job.rb",
@@ -73,6 +74,7 @@ Gem::Specification.new do |s|
     "spec/background_queue/config_spec.rb",
     "spec/background_queue/server_lib/balanced_queue_spec.rb",
     "spec/background_queue/server_lib/config_spec.rb",
+    "spec/background_queue/server_lib/error_task_list_spec.rb",
     "spec/background_queue/server_lib/event_connection_spec.rb",
     "spec/background_queue/server_lib/event_server_spec.rb",
     "spec/background_queue/server_lib/integration/full_test_spec.rb",
@@ -95,7 +97,6 @@ Gem::Specification.new do |s|
     "spec/background_queue/worker/calling_spec.rb",
     "spec/background_queue/worker/environment_spec.rb",
     "spec/background_queue/worker/worker_loader_spec.rb",
-    "spec/background_queue_spec.rb",
     "spec/resources/config-client.yml",
     "spec/resources/config-serialize.yml",
     "spec/resources/config.yml",
