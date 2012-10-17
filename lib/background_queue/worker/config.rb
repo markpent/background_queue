@@ -1,6 +1,8 @@
 module BackgroundQueue::Worker
   class Config
       
+    @@worker_path = nil
+    
     def self.secret=(auth)
       @@secret = auth
     end
