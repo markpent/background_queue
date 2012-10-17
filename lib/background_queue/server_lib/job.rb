@@ -1,6 +1,7 @@
 module BackgroundQueue::ServerLib
   class Job < PriorityQueue
   
+    
     attr_accessor :id
     attr_reader :running_status
     attr_reader :running_ordered_status
@@ -77,6 +78,10 @@ module BackgroundQueue::ServerLib
     
     def next_item
       pop
+    end
+    
+    def remove_item(item)
+      remove(item)
     end
     
     def finish_item(item)

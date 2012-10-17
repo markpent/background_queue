@@ -72,7 +72,7 @@ describe "Queue Integration" do
       
       task = subject.next_item
       task.id.should be(:task_id)
-      subject.next_item.should be_nil
+      subject.next_item.should be_nil 
       subject.finish_item(task)
       subject.next_item.id.should eq(:task_id2)
       
@@ -92,6 +92,30 @@ describe "Queue Integration" do
       subject.finish_item(task)
       subject.next_item.id.should eq(:task_id2)
       
+    end
+  end
+  
+  
+  
+  context "Duplicate Tasks" do
+    it "will replace a duplicate task not running" do
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
+      task = subject.next_item
+      task.id.should be(:task_id)
+      subject.next_item.should be_nil 
+    end
+    
+    it "will queue a duplicate task that is running" do
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
+      task = subject.next_item
+      task.id.should be(:task_id)
+      subject.next_item.should be_nil 
+      subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
+      subject.next_item.should be_nil 
+      subject.finish_item(task)
+      task = subject.next_item
+      task.id.should be(:task_id)
     end
   end
 
