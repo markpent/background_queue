@@ -31,24 +31,26 @@ module BackgroundQueue::ServerLib
           Kernel.sleep(1) unless !@server.running?
         else
           client = build_client
-          if client.send_request(worker, task, @server.config.secret)
+          result = client.send_request(worker, task, @server.config.secret)
+          if result == :ok
             @server.logger.debug("called worker for task #{task.id}")
             @server.workers.finish_using_worker(worker, true)
             @server.task_queue.finish_task(task)
             @server.change_stat(:running, -1)
             @server.change_stat(:run_tasks, 1)
-            
             return true
           else
             @server.logger.debug("failed calling worker for task #{task.id}")
-            @server.workers.finish_using_worker(worker, false)
-            error_count += 1
-            if error_count > 5
-              @server.logger.debug("error count exceeded for task #{task.id}, returning to queue")
-              @server.task_queue.finish_task(task)
-              @server.task_queue.add_task(task)
-              return true
-            end
+            @server.workers.finish_using_worker(worker, result == :worker_error)
+            @server.error_tasks.add_task(task)
+            return result != :stop
+            #error_count += 1
+            #if error_count > 5
+            #  @server.logger.debug("error count exceeded for task #{task.id}, returning to queue")
+            #  @server.task_queue.finish_task(task)
+            #  @server.task_queue.add_task(task)
+            #  return true
+            #end
           end
         end
       end

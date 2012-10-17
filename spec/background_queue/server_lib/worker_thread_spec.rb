@@ -11,9 +11,12 @@ describe BackgroundQueue::ServerLib::WorkerThread do
   let(:workers) {
     double("workers")
   }
+  let(:error_tasks) {
+    double("error_tasks")
+  }
   
   let(:server) {
-    SimpleServer.new(:task_queue=>balanced_queue, :workers=>workers, :config=>double("conf", :secret=>:secret))
+    SimpleServer.new(:task_queue=>balanced_queue, :workers=>workers, :config=>double("conf", :secret=>:secret), :error_tasks=>error_tasks)
   }
   
   subject { BackgroundQueue::ServerLib::WorkerThread.new(server) }
@@ -48,31 +51,38 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       server.stub('running?'=>true)
       worker = double("worker")
       task = DefaultTask.new
-      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
+      worker_client = double("worker_client")
+      subject.should_receive(:build_client).and_return(worker_client)
+      worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:ok)
       server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
       server.task_queue.should_receive(:finish_task).with(task)
       subject.call_worker(task).should be_true
     end
     
-    it "will keep trying if the worker fails" do
+    it "will regegister as a failed worker if send_request returns :fatal_error" do
       server.stub('running?'=>true)
       worker = double("worker")
       task = DefaultTask.new
-      count = 0
-      worker_client1 = double("w1")
-      worker_client1.should_receive(:send_request).with(worker, task, :secret).and_return(false)
-      worker_client2 = double("w2")
-      worker_client2.should_receive(:send_request).with(worker, task, :secret).and_return(true)
-      
-      subject.should_receive(:build_client).twice {
-        count += 1
-        count == 1 ? worker_client1 : worker_client2
-      }
-      server.workers.should_receive(:get_next_worker).twice.and_return(worker)
+      server.error_tasks.should_receive(:add_task).with(task)
+      worker_client = double("worker_client")
+      subject.should_receive(:build_client).and_return(worker_client)
+      worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:fatal_error)
+      server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, false)
+      subject.call_worker(task).should be_true
+    end
+    
+    it "will regegister as a ok worker if send_request returns :worker_error" do
+      server.stub('running?'=>true)
+      worker = double("worker")
+      task = DefaultTask.new
+      server.error_tasks.should_receive(:add_task).with(task)
+      worker_client = double("worker_client")
+      subject.should_receive(:build_client).and_return(worker_client)
+      worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:worker_error)
+      server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
-      server.task_queue.should_receive(:finish_task).with(task)
       subject.call_worker(task).should be_true
     end
     
@@ -86,7 +96,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
         count == 1 ? nil : worker
       }
       Kernel.should_receive(:sleep).with(1)
-      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(true)
+      BackgroundQueue::ServerLib::WorkerClient.any_instance.should_receive(:send_request).with(worker, task, :secret).and_return(:ok)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
       server.task_queue.should_receive(:finish_task).with(task)
       subject.call_worker(task).should be_true

@@ -254,6 +254,8 @@ module BackgroundQueue::ServerLib
       
       @event_server = BackgroundQueue::ServerLib::EventServer.new(self)
       
+      @error_tasks = BackgroundQueue::ServerLib::ErrorTaskList.new(self)
+      
       @jobs = BackgroundQueue::ServerLib::JobRegistry.new
       
       load_tasks(config.task_file)

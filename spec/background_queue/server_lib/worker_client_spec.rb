@@ -40,7 +40,7 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
       subject.should_receive(:build_request).with(uri, task, "auth").and_return(:post_request)
       Net::HTTP.should_receive(:start).with("127.0.0.1", 3000).and_raise("connection error")
-      subject.send_request(worker_config, task, "auth").should be_false
+      subject.send_request(worker_config, task, "auth").should eq(:fatal_error)
     end
   end
   
@@ -112,7 +112,7 @@ describe BackgroundQueue::ServerLib::WorkerClient do
   
   context "can handle thread cancelling" do
     #this can cause issues with other tests....
-    xit "will return false if exception raised" do
+    it "will return false if server stopped", :can_be_flakey=>true do
       
       mutex = Mutex.new
       resource = ConditionVariable.new
@@ -122,66 +122,69 @@ describe BackgroundQueue::ServerLib::WorkerClient do
 
       run_request = false
       ss = TestWorkerServer.new(8001)
-      ss.start(Proc.new { |controller|
-        #puts "in proc"
-          
-        mutex2.synchronize {
-          resource2.signal
-        }
-        #puts "in proc: waiting" 
-        mutex.synchronize {
-          resource.wait(mutex)
-        }
-        #puts "waited"
-        run_request = true
-        controller.render :text =>{:percent=>100, :caption=>"Done"}.to_json, :type=>"text/text"
-      })
-      
-      
-      uri = URI("http://127.0.0.1:8001/background_queue")
-      worker_config = BackgroundQueue::ServerLib::Worker.new(uri)
-      task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
-      
-      call_result = nil
-      t1 = Thread.new {
-        #puts "calling"
-        begin
-          status = Timeout::timeout(2) {
-            call_result = subject.send_request(worker_config, task, "abcd")
-           # puts "called"
+      begin
+        ss.start(Proc.new { |controller|
+          #puts "in proc"
+            
+          mutex2.synchronize {
+            resource2.signal
           }
-        rescue Timeout::Error=>te
-          #puts "timeout"
-          call_result = :timeout
-        end
-        mutex2.synchronize {
-          resource2.signal
+          #puts "in proc: waiting" 
+          mutex.synchronize {
+            resource.wait(mutex)
+          }
+          #puts "waited"
+          run_request = true
+          controller.render :text =>{:percent=>100, :caption=>"Done"}.to_json, :type=>"text/text"
+        })
+        
+        
+        uri = URI("http://127.0.0.1:8001/background_queue")
+        worker_config = BackgroundQueue::ServerLib::Worker.new(uri)
+        task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
+        
+        call_result = nil
+        t1 = Thread.new {
+          #puts "calling"
+          begin
+            status = Timeout::timeout(2) {
+              call_result = subject.send_request(worker_config, task, "abcd")
+             # puts "called"
+            }
+          rescue Timeout::Error=>te
+            #puts "timeout"
+            call_result = :timeout
+          end
+          mutex2.synchronize {
+            resource2.signal
+          }
         }
-      }
-
-      #wait until we know the request has been sent and is processing
-      mutex2.synchronize {
-        resource2.wait(mutex2)
-      }
-      run_request.should be_false
-      #puts "cancelling"
-      t1.raise "Cancelling From Thread"
-      
-      #puts "canceled"
-      #wait until we know the request has been cancelled
-      mutex2.synchronize {
-        resource2.wait(mutex2)
-      }
-      call_result.should be_false
-      run_request.should be_false
-
-      mutex.synchronize {
-        resource.signal
-      }
-     
-      
-      t1.join
-      ss.stop
+  
+        #wait until we know the request has been sent and is processing
+        mutex2.synchronize {
+          resource2.wait(mutex2)
+        }
+        run_request.should be_false
+        #puts "cancelling"
+        t1.raise BackgroundQueue::ServerLib::ThreadManager::ForcedStop.new("Timeout when forcing threads to stop")
+        
+        #puts "canceled"
+        #wait until we know the request has been cancelled
+        mutex2.synchronize {
+          resource2.wait(mutex2)
+        }
+        call_result.should eq(:stop)
+        run_request.should be_false
+  
+        mutex.synchronize {
+          resource.signal
+        }
+       
+        
+        t1.join
+      ensure
+        ss.stop
+      end
       
     end
     

@@ -19,11 +19,17 @@ module BackgroundQueue::ServerLib
             read_response(worker, response, task)
           end
         end
-        true
+        return :ok
+      rescue BackgroundQueue::ServerLib::WorkerError => we
+        @server.logger.error("Worker Error sending request #{task.id} to worker: #{e.message}")
+        return :worker_error
+      rescue BackgroundQueue::ServerLib::ThreadManager::ForcedStop => fe
+        @server.logger.error("Thread stop while sending request #{task.id} to worker: #{fe.message}")
+        return :stop
       rescue Exception=>e
         @server.logger.error("Error sending request #{task.id} to worker: #{e.message}")
         @server.logger.debug(e.backtrace.join("\n"))
-        return false
+        return :fatal_error
       end
     end
     
@@ -49,7 +55,7 @@ module BackgroundQueue::ServerLib
           @prev_chunk = nil
         end
       else
-        raise "Invalid response code (#{http_response.code}) when calling #{worker.uri.to_s}"
+        raise BackgroundQueue::ServerLib::WorkerError, "Invalid response code (#{http_response.code}) when calling #{worker.uri.to_s}"
       end
     end
     
@@ -89,6 +95,10 @@ module BackgroundQueue::ServerLib
       status_map = BackgroundQueue::Utils::AnyKeyHash.new(status)
       task.set_worker_status(status_map)
     end
+    
+  end
+  
+  class WorkerError < Exception
     
   end
 end

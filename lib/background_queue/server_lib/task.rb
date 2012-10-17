@@ -68,6 +68,20 @@ module BackgroundQueue::ServerLib
       @options[:initial_progress_caption]
     end
     
+    def get_error_count
+      if @error_count.nil?
+        0
+      else
+        @error_count
+      end
+    end
+    
+    
+    def increment_error_count
+      @error_count = get_error_count + 1
+    end
+    
+    
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?
       status[:task_id] = self.id

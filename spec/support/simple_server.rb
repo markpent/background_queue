@@ -6,6 +6,7 @@ class SimpleServer
   attr_accessor :workers
   attr_accessor :jobs
   attr_accessor :logger
+  attr_accessor :error_tasks
   
   def initialize(options={})
     @logger = Logger.new("/dev/null")
@@ -15,6 +16,7 @@ class SimpleServer
     @event_server = options[:event_server]
     @workers = options[:workers]
     @jobs = options[:jobs]
+    @error_tasks = options[:error_tasks]
   end
   
   def running?
