@@ -7,6 +7,7 @@ module BackgroundQueue::ServerLib
     attr_accessor :config
     attr_accessor :thread_manager
     attr_accessor :task_queue
+    attr_accessor :error_tasks
     attr_accessor :event_server
     attr_accessor :workers
     attr_accessor :jobs
@@ -37,7 +38,7 @@ module BackgroundQueue::ServerLib
       OptionParser.new do |opts|
         opts.banner = "Usage: server command [options]"
         case options[:command]
-          when :start, :test
+          when :start, :test, :run
             opts.on("-c", "--config PATH", "Configuration Path") do |cp|
               options[:config] = cp
             end
@@ -59,6 +60,10 @@ module BackgroundQueue::ServerLib
         end
         opts.on("-e", "--environment [RAILS_ENV]", "testing/development/production (development)") do |env|
           env_to_load = env
+        end
+        opts.on_tail("-h", "--help", "Show this message") do
+          puts opts
+          exit
         end
       end.parse!(argv)
       
