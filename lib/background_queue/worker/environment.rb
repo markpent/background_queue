@@ -9,6 +9,7 @@ module BackgroundQueue::Worker
     attr_reader :owner_id
     attr_reader :worker
     attr_reader :logger
+    attr_reader :summary
     
     attr_reader :server_address
     
@@ -40,6 +41,15 @@ module BackgroundQueue::Worker
       @task_id = hash_data['id']
       @priority = hash_data['priority']
       @worker = hash_data['worker']
+      
+      
+      summary_data = nil
+      begin
+        summary_data = JSON.load(controller_params[:summary]) unless controller_params[:summary].nil?
+      rescue Exception=>e
+        raise "Invalid data format (should be json) when loading summary from buffer: #{e.message}"
+      end
+      @summary = BackgroundQueue::Utils::AnyKeyHash.new(summary_data) unless summary_data.nil?
     end
     
     def set_output(out)

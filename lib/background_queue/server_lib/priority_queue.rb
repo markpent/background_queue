@@ -8,6 +8,7 @@ module BackgroundQueue::ServerLib
       @items = {}
       @stalled_items = {}
       @stalled = false
+      @running_items = 0
     end
     
     def pop
@@ -51,6 +52,10 @@ module BackgroundQueue::ServerLib
     
     def empty?
       @queues.empty?
+    end
+    
+    def has_running_items?
+      @running_items > 0
     end
     
     def number_of_priorities

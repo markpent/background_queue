@@ -55,4 +55,8 @@ class SimpleTask
   def initial_progress_caption
     @options[:initial_progress_caption]
   end
+  
+  def send_summary?
+    @options[:send_summary]
+  end
 end

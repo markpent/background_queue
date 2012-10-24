@@ -9,14 +9,14 @@ describe BackgroundQueue::ServerLib::Job do
   
   it "#add_item uses normal priority queue" do
     task.should_receive(:set_job).with(subject)
-    task.should_receive(:synchronous?).and_return(false)
+    #task.should_receive(:synchronous?).and_return(false)
     BackgroundQueue::ServerLib::Job.any_instance.should_receive(:push).with(task).and_return(nil)
     subject.add_item(task)
   end
   
   it "#next_item uses normal priority queue" do
-    BackgroundQueue::ServerLib::Job.any_instance.should_receive(:pop).and_return(:task)
-    subject.next_item.should eq(:task)
+    BackgroundQueue::ServerLib::Job.any_instance.should_receive(:pop).and_return(task)
+    subject.next_item.should eq(task)
   end
   
   context "#add_item" do
@@ -317,6 +317,47 @@ describe BackgroundQueue::ServerLib::Job do
       status = {:caption=>'cappy'}
       subject.stub(:current_running_status=>status, :total_counted_tasks=>1, :completed_counted_tasks=>0)
       subject.get_current_progress_caption.should eq('cappy')
+    end
+  end
+  
+  context "#update_summary_meta" do
+    it "will append data" do
+      subject.update_summary_meta({:summary=>"app", :type=>"test", :data=>1})
+      subject.update_summary_meta({:summary=>"app", :type=>"test", :data=>2})
+      subject.summary[:test].should eq([1,2])
+    end
+    
+    it "will set data" do
+      subject.update_summary_meta({:summary=>"set", :type=>"test", :key=>'a', :data=>1})
+      subject.update_summary_meta({:summary=>"set", :type=>"test", :key=>'b', :data=>2})
+      subject.summary[:test].should eq({'a'=>1, 'b'=>2})
+    end
+    
+    it "will increment data" do
+      subject.update_summary_meta({:summary=>"inc", :type=>"test", :data=>1})
+      subject.summary[:test].should eq(1)
+      subject.update_summary_meta({:summary=>"inc", :type=>"test", :data=>2})
+      subject.summary[:test].should eq(3)
+    end
+    
+    it "will decrement data" do
+      subject.update_summary_meta({:summary=>"inc", :type=>"test", :data=>4})
+      subject.summary[:test].should eq(4)
+      subject.update_summary_meta({:summary=>"dec", :type=>"test", :data=>2})
+      subject.summary[:test].should eq(2)
+    end
+    
+    it "will reset data" do
+      subject.update_summary_meta({:summary=>"inc", :type=>"test", :data=>4})
+      subject.summary[:test].should eq(4)
+      subject.update_summary_meta({:summary=>"res", :type=>"test"})
+      subject.summary[:test].should be_nil
+      subject.update_summary_meta({:summary=>"inc", :type=>"test", :data=>4})
+      subject.update_summary_meta({:summary=>"inc", :type=>"test2", :data=>4})
+      subject.summary[:test].should eq(4)
+      subject.summary[:test2].should eq(4)
+      subject.update_summary_meta({:summary=>"res", :type=>"all"})
+      subject.summary.should eq({})
     end
   end
   

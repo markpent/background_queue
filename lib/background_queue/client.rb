@@ -19,8 +19,11 @@ module BackgroundQueue
     end
     
     #add multiple tasks to the background, all with the same worker/owner/job
+    #tasks is an array in the format [[:task_id1, {:some=>"params"}],[:task_id2, {:some_other=>"params"}, {:some=>"options}]]
     def add_tasks(worker, owner_id, job_id, tasks, priority, shared_parameters={}, options={}, server=nil )
-      send_command(BackgroundQueue::ClientLib::Command.add_tasks_command(worker, owner_id, job_id, tasks, priority, shared_parameters, options ), server)
+      result, server = send_command(BackgroundQueue::ClientLib::Command.add_tasks_command(worker, owner_id, job_id, tasks, priority, shared_parameters, options ), server)
+      #the server currently either returns :ok or an exception would have been thrown
+      BackgroundQueue::ClientLib::JobHandle.new(owner_id, job_id, server)
     end
     
     def get_status(job_handle, options={})

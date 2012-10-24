@@ -72,7 +72,8 @@ describe "Client" do
       end
       
       it "can build and send an add tasks command" do
-        subject.add_tasks(:worker, :owner_id, :job_id, :tasks, 1, {}, {} ).should eq([true, :server])
+        job_handle = subject.add_tasks(:worker, :owner_id, :job_id, :tasks, 1, {}, {} )
+        job_handle.job_id.should eq(:job_id)
       end
       
       

@@ -107,10 +107,16 @@ module BackgroundQueue::ServerLib
       for task_data in command.args[:tasks]
         if task_data[1].nil?
           merged_params = shared_params
+          merged_options = command.options
         else
           merged_params = shared_params.clone.update(task_data[1])
+          if task_data[2].nil?
+            merged_options = command.options
+          else
+            merged_options = command.options.merge(task_data[2])
+          end
         end
-        task = BackgroundQueue::ServerLib::Task.new(owner_id, job_id, task_data[0], priority, worker, merged_params, command.options)
+        task = BackgroundQueue::ServerLib::Task.new(owner_id, job_id, task_data[0], priority, worker, merged_params, merged_options)
         server.task_queue.add_task(task)
       end
       @server.change_stat(:tasks, command.args[:tasks].length)

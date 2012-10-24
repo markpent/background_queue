@@ -48,6 +48,10 @@ module BackgroundQueue::ServerLib
       @job = job
     end
     
+    def get_job
+      @job
+    end
+    
     def is_excluded_from_count?
       @options[:exclude] == true
     end
@@ -66,6 +70,10 @@ module BackgroundQueue::ServerLib
     
     def initial_progress_caption
       @options[:initial_progress_caption]
+    end
+    
+    def send_summary?
+      @options[:send_summary] 
     end
     
     def get_error_count

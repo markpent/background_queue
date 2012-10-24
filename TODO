@@ -1,2 +1,15 @@
 Server
     Raise priority of tasks that have been waiting a long time
+    
+Add shortcut to init and finish tasks
+Add ability to access "summary" data of the tasks in the finish task.
+  summary data operations:
+    append_summary_data(type, data)
+    set_summary_data(type, key, data)
+    increment_summary_data(type, amount)
+    decrement_sumary_data(type, amount)
+    reset_summary_data(type)
+Add cache for tasks in a job to share? use memcache?
+
+Progress Manager
+

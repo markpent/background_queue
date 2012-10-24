@@ -29,6 +29,31 @@ module BackgroundQueue::Worker
       self.environment.send_data({:meta=>{key=>value}}.to_json)
     end
     
+    def append_summary(type, data)
+      raise "Missing Type when appending summary" if type.nil?
+      self.environment.send_data({:summary=>"app", :type=>type.to_s, :data=>data}.to_json)
+    end
+    
+    def set_summary(type, key, data)
+      raise "Missing Type when settind summary" if type.nil?
+      raise "Missing key when settind summary" if key.nil?
+      self.environment.send_data({:summary=>"set", :type=>type.to_s, :key=>key, :data=>data}.to_json)
+    end
+    
+    def increment_summary(type, amount=1)
+      raise "Missing Type when incrementing summary" if type.nil?
+      self.environment.send_data({:summary=>"inc", :type=>type.to_s, :data=>amount}.to_json)
+    end
+    
+    def decrement_sumary(type, amount=1)
+      raise "Missing Type when decrementing summary" if type.nil?
+      self.environment.send_data({:summary=>"dec", :type=>type.to_s, :data=>amount}.to_json)
+    end
+    
+    def reset_summary(type)
+      self.environment.send_data({:summary=>"res", :type=>type.to_s}.to_json)
+    end
+    
     #virtual function: called to process a worker request
     def run
       raise "run() Not Implemented on worker #{self.class.name}"
@@ -40,6 +65,10 @@ module BackgroundQueue::Worker
     
     def logger
       self.environment.logger
+    end
+    
+    def summary
+      self.environment.summary
     end
     
   end

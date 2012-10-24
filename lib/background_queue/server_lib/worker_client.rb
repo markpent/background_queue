@@ -21,7 +21,7 @@ module BackgroundQueue::ServerLib
         end
         return :ok
       rescue BackgroundQueue::ServerLib::WorkerError => we
-        @server.logger.error("Worker Error sending request #{task.id} to worker: #{e.message}")
+        @server.logger.error("Worker Error sending request #{task.id} to worker: #{we.message}")
         return :worker_error
       rescue BackgroundQueue::ServerLib::ThreadManager::ForcedStop => fe
         @server.logger.error("Thread stop while sending request #{task.id} to worker: #{fe.message}")
@@ -37,7 +37,9 @@ module BackgroundQueue::ServerLib
     
     def build_request(uri, task, secret)
       req = Net::HTTP::Post.new(uri.path)
-      req.set_form_data({:task=>task.to_json, :auth=>secret, :server_port=>@server.config.address.port})
+      form_data = {:task=>task.to_json, :auth=>secret, :server_port=>@server.config.address.port}
+      form_data[:summary] = task.get_job.summary.to_json if task.send_summary?
+      req.set_form_data(form_data)
       req["host"] = task.domain
       req
     end

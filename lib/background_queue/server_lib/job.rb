@@ -19,6 +19,8 @@ module BackgroundQueue::ServerLib
     attr_reader :completed_weighted_tasks
     attr_reader :running_percent_weighted
     
+    attr_reader :summary
+    
     #attr_reader :current_running_excluded_status
     
     def initialize(id, owner)
@@ -69,7 +71,7 @@ module BackgroundQueue::ServerLib
         @total_weighted_tasks += 1
         @total_weighted_percent += task.weighted_percent
       end
-      @synchronous_count+=1 if task.synchronous?
+      #@synchronous_count+=1 if task.synchronous? #the queue only goes into sync mode once the task is running/about to run
       unless task.initial_progress_caption.nil? || task.initial_progress_caption.length == 0 || @current_progress[:percent] > 0
         @current_progress[:caption] = task.initial_progress_caption
       end
@@ -77,7 +79,10 @@ module BackgroundQueue::ServerLib
     end
     
     def next_item
-      pop
+      item = pop
+      @running_items += 1 if item
+      @synchronous_count+=1 if item && item.synchronous?
+      item
     end
     
     def remove_item(item)
@@ -85,16 +90,20 @@ module BackgroundQueue::ServerLib
     end
     
     def finish_item(item)
+      @running_items -= 1
       @synchronous_count-=1 if item.synchronous?
     end
     
     def synchronous?
-      @synchronous_count > 0
+      next_item = peek
+      @synchronous_count > 0 || (next_item && next_item.synchronous?)
     end
     
     def set_worker_status(status)
       if status[:meta]
         update_status_meta(status[:meta])
+      elsif status[:summary]
+        update_summary_meta(status)
       else
         running_status = get_running_status(status)
         if status[:percent] >= 100
@@ -149,6 +158,33 @@ module BackgroundQueue::ServerLib
         @status_meta[:meta] = @status_meta[:meta].update(meta[:meta])
       end
       update_current_progress
+    end
+    
+    def update_summary_meta(status)
+      @summary ||= {}
+      type = status[:type].intern
+      case status[:summary]
+      when "app"
+        @summary[type] ||= []
+        @summary[type] << status[:data]
+      when "set"
+        @summary[type] ||= {}
+        @summary[type][status[:key]] = status[:data]
+      when "inc"
+        @summary[type] ||= 0
+        @summary[type] += status[:data].to_i
+      when "dec"
+        @summary[type] ||= 0
+        @summary[type] -= status[:data].to_i
+      when "res"
+        if type == :all
+          @summary = {}
+        else
+          @summary.delete(type)
+        end
+      else
+        logger.error("Unknown summary action: #{status[:summary]}")
+      end
     end
     
     def update_finished_status(status)

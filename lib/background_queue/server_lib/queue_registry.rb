@@ -26,7 +26,9 @@ module BackgroundQueue::ServerLib
         else
           push(queue)
         end
+        @running_items += 1
       end
+      #server.logger.debug("next item #{item.nil? ? 'nil' : item.id}")
       item
     end
     
@@ -48,7 +50,8 @@ module BackgroundQueue::ServerLib
       in_queue, queue = get_queue(get_queue_id_from_item(item), false)
       raise "Queue #{get_queue_id_from_item(item)} unavailble when finishing item" if queue.nil?
       queue.finish_item(item)
-      resume_queue(queue)
+      @running_items -= 1
+      resume_queue(queue) unless queue.synchronous? && queue.has_running_items?
     end
     
     private
@@ -94,6 +97,7 @@ module BackgroundQueue::ServerLib
     
     def stall_queue(queue)
       queue.stalled = true
+      server.logger.debug("stalling queue #{queue.id} (empty=#{queue.empty?})")
       #puts "stalling queue #{queue.inspect}"
       @stalled_items[queue.id] = queue
     end
@@ -101,13 +105,15 @@ module BackgroundQueue::ServerLib
     def resume_queue(queue)
       if queue.stalled?
         @stalled_items.delete(queue.id) 
-        unless queue.empty? 
+        unless queue.empty? && !queue.has_running_items?
           queue.stalled = false
           push(queue)
           @items[queue.id] = queue
+          server.logger.debug("resumed queue #{queue.id}")
           #puts "returned q: #{queue.inspect}"
         else
           @items.delete(queue.id)
+          server.logger.debug("removed empty queue #{queue.id}")
           #puts "q empty"
         end
       #else

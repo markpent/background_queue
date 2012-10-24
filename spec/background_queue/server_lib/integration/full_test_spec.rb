@@ -92,7 +92,7 @@ describe "Full Test" do
       while server.event_server.nil? || !server.event_server.running
         sleep(0.1)
       end
-      
+      ss = nil
       begin
 
         task_pos = 0
@@ -180,8 +180,9 @@ describe "Full Test" do
         stats[:running].should eq(0)   
         stats[:run_tasks].should eq(3)
         
-        ss.stop
+        
       ensure
+        ss.stop unless ss.nil?
         server.stop
         thread.join
       end
@@ -227,6 +228,77 @@ describe "Full Test" do
   
         job_handle = client.add_task(:test_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com"} )
   
+        ss.wait_to_be_called.should be_true
+        
+        result = client.get_status(job_handle)
+  
+        result.code.should eq(:status)
+        result.args[:percent].should eq(100)
+        result.args[:caption].should eq('Done')
+
+        ss.stop
+      ensure
+        server.stop
+        
+        thread.join
+      end
+    end
+    
+    
+    it "will keep track of summary" do
+
+      config_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/config.yml')
+      BackgroundQueue::Worker::Config.worker_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/')
+      BackgroundQueue::Worker::Config.secret = "this_is_used_to_make_sure_it_is_secure"
+      
+      server = BackgroundQueue::ServerLib::Server.new
+
+      thread = Thread.new {
+        server.start(:config=>config_path, :skip_pid=>true, :command=>:run, :log_file=>"/tmp/bq.log", :log_level=>'debug')
+      }
+
+      while server.event_server.nil? || !server.event_server.running
+        sleep(0.1)
+      end
+      
+      begin
+
+        count = 0
+        summary_data = nil 
+        meth_name = nil
+        ss = TestWorkerServer.new(8001, true)
+        ss.start(Proc.new { |controller|
+            controller.class.send(:include, BackgroundQueue::Worker::Calling)
+            controller.run_worker
+        })
+        
+        
+        client_config_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/config-client.yml')
+        
+        client = BackgroundQueue::Client.new(client_config_path)
+        
+  
+        job_handle = client.add_tasks(:summary_worker, :owner_id, :job_id, [[:task1_id, {:test_id=>1}], [:task2_id, {:test_id=>2}], [:task3_id, {:mode=>"summary"}, {:send_summary=>true, :weight=>10, :exclude=>true, :synchronous=>true}]], 2, {:something=>:else}, {:domain=>"www.example.com"} )
+  
+        ss.allow_to_be_called
+        ss.wait_to_be_called.should be_true
+        
+        result = client.get_status(job_handle)
+  
+        result.code.should eq(:status)
+        result.args[:percent].should eq(45)
+        result.args[:caption].should eq('Done (2/2)')
+        
+        ss.allow_to_be_called
+        ss.wait_to_be_called.should be_true
+        
+        result = client.get_status(job_handle)
+  
+        result.code.should eq(:status)
+        result.args[:percent].should eq(90)
+        result.args[:caption].should eq('Done (2/2)')
+        
+        ss.allow_to_be_called
         ss.wait_to_be_called.should be_true
         
         result = client.get_status(job_handle)

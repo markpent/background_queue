@@ -20,7 +20,11 @@ module BackgroundQueue
       
       #wrap a hash
       def initialize(hash)
-        @hash = hash
+        if hash.kind_of?(Hash)
+          @hash = hash
+        else
+          raise "Invalid class used when initializing AnyKeyHash (#{hash.class.name})"
+        end
       end
       
       #get an entry by string or symbol
@@ -34,6 +38,10 @@ module BackgroundQueue
       
       def to_json(dummy=true)
         @hash.to_json
+      end
+      
+      def merge(other_map)
+        AnyKeyHash.new(@hash.clone.update(other_map))
       end
     end
   end
