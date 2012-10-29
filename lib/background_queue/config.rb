@@ -67,8 +67,6 @@ module BackgroundQueue
         end
       end
       
-      
-      
       def convert_yaml_to_hash(string, path)
         begin
           result = YAML::load(string)
@@ -79,16 +77,8 @@ module BackgroundQueue
         end
       end
       
-      def current_environment
-        if ENV.has_key?('RAILS_ENV')
-          ENV['RAILS_ENV']
-        elsif defined? Rails
-          Rails.env
-        end
-      end
-      
       def extract_enviroment_entry(all_configs, path)
-        env_str = current_environment
+        env_str = BackgroundQueue::Utils.current_environment
         if all_configs.has_key?(env_str)
           all_configs[env_str]
         elsif all_configs.has_key?(env_str.to_s.intern)

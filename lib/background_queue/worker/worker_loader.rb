@@ -56,7 +56,7 @@ module BackgroundQueue::Worker
       ds = File.mtime(worker_entry.path)
       if ds != worker_entry.datestamp
         load_file(worker_entry.path)
-        worker_entry.worker = load_class(worker_entry.name)
+        worker_entry.worker = load_class(worker_entry.name, worker_entry.path)
         worker_entry.datestamp = ds
       end
     end

@@ -2,6 +2,22 @@ module BackgroundQueue
   #Utility Module
   module Utils
     
+    def self.current_environment
+      if ENV.has_key?('RAILS_ENV')
+        ENV['RAILS_ENV']
+      elsif defined? Rails
+        Rails.env
+      end
+    end
+    
+    def self.current_root
+      if defined? RAILS_ROOT
+        RAILS_ROOT
+      elsif defined? Rails
+        Rails.root
+      end
+    end
+    
     #gets an entry from a hash regardless if the key is a string or symbol
     def self.get_hash_entry(hash, key)
       if hash.has_key?(key)

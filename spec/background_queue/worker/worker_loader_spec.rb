@@ -72,7 +72,7 @@ describe BackgroundQueue::Worker::WorkerLoader do
     it "will reload the worker if the filestamp has changed" do
       File.should_receive(:mtime).with(:path).and_return(Time.at(11))
       subject.should_receive(:load_file).with(:path).and_return(true)
-      subject.should_receive(:load_class).with(:worker_name).and_return(:new_worker)
+      subject.should_receive(:load_class).with(:worker_name, :path).and_return(:new_worker)
       
       subject.reload_if_updated(worker_entry)
       worker_entry.worker.should eq(:new_worker)

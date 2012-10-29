@@ -21,8 +21,12 @@ module BackgroundQueue::Worker
     
     def init_from_controller(controller)
       @controller = controller
-      @logger = controller.logger
       init_params(controller.params)
+      if BackgroundQueue::Worker::Config.separate_logs?
+        @logger = BackgroundQueue::Worker::Logger.init_logger(@worker, @owner_id, @job_id , controller.logger.level)
+      else
+        @logger = controller.logger
+      end   
       init_server_address(controller)
     end
     
@@ -63,6 +67,10 @@ module BackgroundQueue::Worker
     
     def init_server_address(controller)
       @server_address = BackgroundQueue::Worker::Environment::Server.new(controller.request.remote_ip, controller.params[:server_port])
+    end
+    
+    def revert_environment
+      
     end
     
     class Server
