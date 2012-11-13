@@ -92,6 +92,7 @@ module BackgroundQueue::ServerLib
           return insert_queue_at_index(priority, idx)
         end
       end
+      return nil unless create
       return insert_queue_at_index(priority, -1)
     end
     
@@ -121,6 +122,7 @@ module BackgroundQueue::ServerLib
     attr_accessor :priority
     def initialize(priority)
       @priority = priority
+      raise "Invalid priority" if @priority.nil?
       super(0)
     end
     
