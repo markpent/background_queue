@@ -9,6 +9,8 @@ module BackgroundQueue::ServerLib
           remove(queue, original_priority)
         end
         push(queue)
+      elsif queue.stalled? && !(queue.synchronous? && queue.has_running_items?) #it stalled because it was empty...
+        resume_queue(queue)
       end
     end
     
@@ -27,12 +29,14 @@ module BackgroundQueue::ServerLib
           push(queue)
         end
         @running_items += 1
+        item.running = true unless item.nil?
       end
       #server.logger.debug("next item #{item.nil? ? 'nil' : item.id}")
       item
     end
     
     def remove_item(item)
+      item.running = false
       in_queue, queue = get_queue(get_queue_id_from_item(item), false)
       raise "Unable to remove task #{item.id} at priority #{item.priority} (no queue at that priority)" if queue.nil?
       priority_decreased, original_priority, item = remove_item_from_queue(queue, item)
@@ -104,17 +108,22 @@ module BackgroundQueue::ServerLib
     
     def resume_queue(queue)
       if queue.stalled?
-        @stalled_items.delete(queue.id) 
-        unless queue.empty? && !queue.has_running_items?
+        
+        if queue.empty? && !queue.has_running_items?
+          @stalled_items.delete(queue.id) 
+          @items.delete(queue.id)
+          server.logger.debug("removed empty queue #{queue.id}")
+          #puts "q empty"
+        elsif !queue.empty?
+          @stalled_items.delete(queue.id) 
           queue.stalled = false
           push(queue)
           @items[queue.id] = queue
           server.logger.debug("resumed queue #{queue.id}")
           #puts "returned q: #{queue.inspect}"
         else
-          @items.delete(queue.id)
-          server.logger.debug("removed empty queue #{queue.id}")
-          #puts "q empty"
+          server.logger.debug("keeping empty queue stalled #{queue.id}")
+          #keep stalled
         end
       #else
       #  puts "q not stalled"

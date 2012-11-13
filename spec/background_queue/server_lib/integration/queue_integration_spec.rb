@@ -88,9 +88,9 @@ describe "Queue Integration" do
       
       task2.get_job.total_tasks.should eq(2)
 
-      subject.next_item.should be_nil
-      subject.finish_item(task)
       subject.next_item.id.should eq(:task_id2)
+      subject.finish_item(task)
+      #subject.next_item.id.should eq(:task_id2)
       
     end
   end
@@ -103,6 +103,7 @@ describe "Queue Integration" do
       subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
       task = subject.next_item
       task.id.should be(:task_id)
+      subject.finish_item(task)
       subject.next_item.should be_nil 
     end
     
@@ -110,10 +111,12 @@ describe "Queue Integration" do
       subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
       task = subject.next_item
       task.id.should be(:task_id)
+      task.running = true
       subject.next_item.should be_nil 
       subject.add_task(SimpleTask.new(:owner_id, :job_id, :task_id, 3, {:synchronous=>true}))
       subject.next_item.should be_nil 
-      subject.finish_item(task)
+      task.running = false
+      subject.finish_task(task)
       task = subject.next_item
       task.id.should be(:task_id)
     end

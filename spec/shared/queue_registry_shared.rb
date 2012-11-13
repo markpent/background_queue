@@ -99,13 +99,14 @@ shared_examples "a queue registry" do
         bg.add_item(task2)
         bg
       }
+      
         
       it "will add to stalled items if no items left for queue" do
-        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, task1]}
         queue_class.any_instance.stub(:empty?) { true }
         subject.should_receive(:stall_queue)
         subject.__prv__get_queue_for_priority(2, false)
-        subject.next_item.should eq(:task)
+        subject.next_item.should eq(task1)
         subject.__prv__get_queues.should have(1).items
         subject.__prv__get_queues.first.priority.should eq(3)
         #make sure the owner was removed
@@ -115,7 +116,7 @@ shared_examples "a queue registry" do
       
       
       it "will lower priority when items left are lower priority" do
-        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, :task]}
+        subject.should_receive(:remove_item_from_queue).with(any_args) { [true, 2, task1]}
         queue_class.any_instance.stub(:empty?) { false }
         
         subject.__prv__get_queue(:owner_id2, true).last.set_priority(3)
