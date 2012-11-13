@@ -17,10 +17,19 @@ module BackgroundQueue::ServerLib
     
     def add_task(task)
       @thread_manager.protect_access {
+        if task.replaced_while_waiting_to_retry?
+          @server.logger.debug("Not adding task that was replaced while waiting to retry (#{task.id})")
+          return
+        end
         status, existing_task = @task_registry.register(task)
         if status != :waiting
           if status == :existing
+            @server.logger.debug("Removing existing task (#{task.id})")
             remove_item(existing_task)
+          elsif status == :waiting_to_retry
+            @server.logger.debug("Removing existing task that is waiting to retry (#{task.id})")
+            existing_task.set_error_status(:replaced_while_waiting_to_retry)
+            finish_item(existing_task)
           end
           add_item(task)
           @thread_manager.signal_access #wake anything reading from the queue
@@ -36,11 +45,24 @@ module BackgroundQueue::ServerLib
     
     def finish_task(task)
       @thread_manager.protect_access {
+        if task.replaced_while_waiting_to_retry?
+          @server.logger.debug("Not finishing task that was replaced while waiting to retry (#{task.id})")
+          return
+        end
         finish_item(task)
         existing_task = @task_registry.de_register(task.id)
         if existing_task
           add_item(task)
         end
+      }
+    end
+    
+    #need to synchronise this...
+    def add_task_to_error_list(task)
+      @thread_manager.protect_access {
+        task.running = false
+        task.set_error_status(:waiting_to_retry)
+        @server.error_tasks.add_task(task)
       }
     end
     

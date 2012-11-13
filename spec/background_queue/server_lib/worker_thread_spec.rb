@@ -64,7 +64,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       server.stub('running?'=>true)
       worker = double("worker")
       task = DefaultTask.new
-      server.error_tasks.should_receive(:add_task).with(task)
+      server.task_queue.should_receive(:add_task_to_error_list).with(task)
       worker_client = double("worker_client")
       subject.should_receive(:build_client).and_return(worker_client)
       worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:fatal_error)
@@ -77,7 +77,7 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       server.stub('running?'=>true)
       worker = double("worker")
       task = DefaultTask.new
-      server.error_tasks.should_receive(:add_task).with(task)
+      server.task_queue.should_receive(:add_task_to_error_list).with(task)
       worker_client = double("worker_client")
       subject.should_receive(:build_client).and_return(worker_client)
       worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:worker_error)

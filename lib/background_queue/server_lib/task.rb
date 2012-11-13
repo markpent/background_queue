@@ -18,6 +18,7 @@ module BackgroundQueue::ServerLib
       @job_id = job_id
       @id = id
       @priority = priority
+      raise "Missing priority" if @priority.nil?
       @worker = worker
       @running = false
       @options = options
@@ -84,6 +85,21 @@ module BackgroundQueue::ServerLib
       end
     end
     
+    def set_error_status(e_status)
+      @error_status = e_status
+    end
+    
+    def get_error_status
+      @error_status
+    end
+    
+    def waiting_to_retry?
+      @error_status == :waiting_to_retry
+    end
+    
+    def replaced_while_waiting_to_retry?
+      @error_status == :replaced_while_waiting_to_retry
+    end
     
     def increment_error_count
       @error_count = get_error_count + 1
@@ -92,6 +108,7 @@ module BackgroundQueue::ServerLib
     def step
       @options[:step]
     end
+    
     
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?

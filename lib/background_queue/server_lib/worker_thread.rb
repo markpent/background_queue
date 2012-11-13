@@ -42,7 +42,7 @@ module BackgroundQueue::ServerLib
           else
             @server.logger.debug("failed calling worker for task #{task.id}")
             @server.workers.finish_using_worker(worker, result == :worker_error)
-            @server.error_tasks.add_task(task)
+            @server.task_queue.add_task_to_error_list(task)
             return result != :stop
             #error_count += 1
             #if error_count > 5

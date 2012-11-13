@@ -59,7 +59,24 @@ class SimpleTask
   def send_summary?
     @options[:send_summary]
   end
+  
   def step
     @options[:step]
+  end
+  
+  def set_error_status(e_status)
+    @error_status = e_status
+  end
+  
+  def get_error_status
+    @error_status
+  end
+  
+  def waiting_to_retry?
+    @error_status == :waiting_to_retry
+  end
+  
+  def replaced_while_waiting_to_retry?
+    @error_status == :replaced_while_waiting_to_retry
   end
 end

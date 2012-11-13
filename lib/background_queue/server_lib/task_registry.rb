@@ -11,12 +11,19 @@ module BackgroundQueue::ServerLib
     def register(task)
       existing_task = @tasks[task.id]
       if existing_task.nil? 
+        #puts "nil task"
         @tasks[task.id] = task
         [:new, nil]
       elsif existing_task.running?
+        #puts "task running"
         register_waiting_task(task)
         [:waiting, nil]
+      elsif existing_task.waiting_to_retry?
+        #puts "task waiting_to_retry"
+        @tasks[task.id] = task
+        [:waiting_to_retry, existing_task]
       else
+        #puts "task waiting"
         @tasks[task.id] = task
         [:existing, existing_task]
       end
