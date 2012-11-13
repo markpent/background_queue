@@ -17,7 +17,8 @@ describe BackgroundQueue::Worker::Environment do
     {
       :auth=>"ABCD",
       :task=>{:params=>{:a=>"b"}, :owner_id=>'oid', :job_id=>'jid', :id=>'tid', :priority=>1}.to_json,
-      :server_port=>213
+      :server_port=>213,
+      :step=>"start"
     }
   }
   
@@ -42,6 +43,7 @@ describe BackgroundQueue::Worker::Environment do
       subject.job_id.should eq("jid")
       subject.task_id.should eq("tid")
       subject.priority.should eq(1)
+      subject.step.should eq("start")
     end
     
     it "will error if the task definition is not valid json" do

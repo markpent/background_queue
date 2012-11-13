@@ -2,8 +2,8 @@ module BackgroundQueue::Worker
   class Config
       
     @@worker_path = nil
-    
     @separate_logs = false
+    @@process_name_prefix = "bgq"
     
     def self.secret=(auth)
       @@secret = auth
@@ -45,5 +45,13 @@ module BackgroundQueue::Worker
       @separate_logs
     end
     
+    
+    def self.process_name_prefix=(prefix)
+      @@process_name_prefix = prefix
+    end
+    
+    def self.process_name_prefix
+      @@process_name_prefix
+    end
   end
 end

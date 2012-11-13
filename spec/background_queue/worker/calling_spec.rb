@@ -87,9 +87,11 @@ describe "Calling" do
   
   context "#call_worker" do
     it "will call worker.run within a render block" do
-      env = double("env")
+      env = double("env", :step=>nil)
       worker = double("worker")
       worker.should_receive(:set_environment).with(nil)
+      subject.should_receive(:set_process_name).with(env)
+      subject.should_receive(:revert_process_name)
       env.should_receive(:set_output).with(:output)
       worker.should_receive(:run)
       subject.should_receive(:render) { |opts|

@@ -15,7 +15,7 @@ module BackgroundQueue::Worker
 		end
 		
 		def self.init_logger(worker_name, owner_key, job_key, task_key, level)
-		  logger = build_logger("#{BackgroundQueue::Utils.current_root}/log/workers/#{worker_name}-#{owner_key}-#{job_key}.log", level)
+		  logger = build_logger("#{BackgroundQueue::Utils.current_root}/log/workers/#{worker_name}-#{owner_key}-#{job_key}.log", task_key, level)
 		  
 		  prev_state = {}
 		  
@@ -94,6 +94,20 @@ unless  Module.respond_to?(:redefine_const)
     def redefine_const(name, value)
       __send__(:remove_const, name) if const_defined?(name)
       const_set(name, value)
+    end
+  end
+end
+
+
+#need to be able to set the current logger for existing connections...
+if defined? ActiveRecord && defined? ActiveRecord::ConnectionAdapters && defined? ActiveRecord::ConnectionAdapters::AbstractAdapter
+  module ActiveRecord
+    module ConnectionAdapters # :nodoc:
+      class AbstractAdapter
+        def set_logger(logger)
+          @logger = logger
+        end
+      end
     end
   end
 end

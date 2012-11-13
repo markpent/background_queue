@@ -89,6 +89,9 @@ module BackgroundQueue::ServerLib
       @error_count = get_error_count + 1
     end
     
+    def step
+      @options[:step]
+    end
     
     def set_worker_status(status)
       raise "Task without job set" if @job.nil?

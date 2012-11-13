@@ -59,4 +59,7 @@ class SimpleTask
   def send_summary?
     @options[:send_summary]
   end
+  def step
+    @options[:step]
+  end
 end

@@ -31,7 +31,7 @@ describe BackgroundQueue::Worker::Logger do
   context "#init_logger" do
     it "will reset the system loggers" do
       BackgroundQueue::Utils.should_receive(:current_root).and_return("ROOT")
-      BackgroundQueue::Worker::Logger.should_receive(:build_logger).with("ROOT/log/workers/worker_name-owner_key-job_key.log", :level).and_return(faux_logger)
+      BackgroundQueue::Worker::Logger.should_receive(:build_logger).with("ROOT/log/workers/worker_name-owner_key-job_key.log", "task_key", :level).and_return(faux_logger)
       
       faux_logger.should_receive(:set_previous_state).with({:ar_base=>:ar_logger, :rails_default_logger=>:abc})
       

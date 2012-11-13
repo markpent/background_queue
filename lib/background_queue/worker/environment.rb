@@ -10,6 +10,7 @@ module BackgroundQueue::Worker
     attr_reader :worker
     attr_reader :logger
     attr_reader :summary
+    attr_reader :step
     
     attr_reader :server_address
     
@@ -23,7 +24,7 @@ module BackgroundQueue::Worker
       @controller = controller
       init_params(controller.params)
       if BackgroundQueue::Worker::Config.separate_logs?
-        @logger = BackgroundQueue::Worker::Logger.init_logger(@worker, @owner_id, @job_id , controller.logger.level)
+        @logger = BackgroundQueue::Worker::Logger.init_logger(@worker, @owner_id, @job_id , @task_id, controller.logger.level)
       else
         @logger = controller.logger
       end   
@@ -53,7 +54,12 @@ module BackgroundQueue::Worker
       rescue Exception=>e
         raise "Invalid data format (should be json) when loading summary from buffer: #{e.message}"
       end
-      @summary = BackgroundQueue::Utils::AnyKeyHash.new(summary_data) unless summary_data.nil?
+      if summary_data.nil?
+        @summary = {}
+      else
+        @summary = BackgroundQueue::Utils::AnyKeyHash.new(summary_data)
+      end
+      @step = controller_params[:step]
     end
     
     def set_output(out)

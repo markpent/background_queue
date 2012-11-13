@@ -19,6 +19,7 @@ module BackgroundQueue::Worker
     def set_progress(caption, percent)
       #puts self
       #puts "env=#{self.environment}"
+      logger.debug("set_progress(#{caption}, #{percent})")
       self.environment.send_data({:caption=>caption, :percent=>percent}.to_json)
     end
     
@@ -26,6 +27,7 @@ module BackgroundQueue::Worker
     #key: :notice, :warning, :error, :meta
     #value: :notice/:warning/:error : String, :meta : any json compatible object
     def add_progress_meta(key, value)
+      logger.debug("add_progress_meta(#{key}, #{value.to_json})")
       self.environment.send_data({:meta=>{key=>value}}.to_json)
     end
     
@@ -57,6 +59,16 @@ module BackgroundQueue::Worker
     #virtual function: called to process a worker request
     def run
       raise "run() Not Implemented on worker #{self.class.name}"
+    end
+    
+    #virtual function: called to process a worker request (step=start)
+    def start
+      raise "start() Not Implemented on worker #{self.class.name}"
+    end
+    
+    #virtual function: called to process a worker request (step=finish)
+     def finish
+      raise "finish() Not Implemented on worker #{self.class.name}"
     end
     
     def params
