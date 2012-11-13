@@ -149,7 +149,7 @@ describe "Full Test" do
         meth_name.should eq("POST")
         
         stats = client.get_stats(job_handle.server)
-        stats[:running].should eq(1)   
+        stats[:running].should eq(2)   
         stats[:run_tasks].should eq(1)
         
         #pp server
@@ -288,6 +288,7 @@ describe "Full Test" do
         result.code.should eq(:status)
         result.args[:percent].should eq(45)
         result.args[:caption].should eq('Done (2/2)')
+        result.args[:meta].should eq({'test_meta'=>"something"})
         
         ss.allow_to_be_called
         ss.wait_to_be_called.should be_true

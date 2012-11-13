@@ -147,15 +147,18 @@ module BackgroundQueue::ServerLib
     
     
     def update_status_meta(meta)
+      
       [:notice, :warning, :error].each { |key|
-        if meta[key]
+        val = BackgroundQueue::Utils.get_hash_entry(meta, key)
+        unless val.nil?
           @status_meta[key] = [] if @status_meta[key].nil?
-          @status_meta[key] << meta[key]
+          @status_meta[key] << val
         end
       }
-      if meta[:meta]
+      val = BackgroundQueue::Utils.get_hash_entry(meta, :meta)
+      unless val.nil?
         @status_meta[:meta] = {} if @status_meta[:meta].nil?
-        @status_meta[:meta] = @status_meta[:meta].update(meta[:meta])
+        @status_meta[:meta] = @status_meta[:meta].update(val)
       end
       update_current_progress
     end

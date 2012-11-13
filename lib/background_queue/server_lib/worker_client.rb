@@ -38,7 +38,7 @@ module BackgroundQueue::ServerLib
     def build_request(uri, task, secret)
       req = Net::HTTP::Post.new(uri.path)
       form_data = {:task=>task.to_json, :auth=>secret, :server_port=>@server.config.address.port}
-      form_data[:summary] = task.get_job.summary.to_json if task.send_summary?
+      form_data[:summary] = task.get_job.summary.to_json if task.send_summary? && !task.get_job.summary.nil?
       form_data[:step] = task.step unless task.step.nil?
       req.set_form_data(form_data)
       req["host"] = task.domain
