@@ -17,6 +17,13 @@ module BackgroundQueue::ClientLib
       send_with_header(command.to_buf)
       response = receive_with_header
       BackgroundQueue::Command.from_buf(response)
+    ensure
+      begin
+        @socket.close unless @socket.nil?
+      rescue Exception=>e
+        #dont care...
+      end
+      @socket = nil
     end
     
     private
@@ -25,6 +32,8 @@ module BackgroundQueue::ClientLib
       begin
         Timeout::timeout(3) {
           @socket = TCPSocket.open(@server.host, @server.port)
+          linger = [1,0].pack('ii')
+          @socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, linger) #force close so if called many times it wont clog the available ports
           true
         }
       rescue Timeout::Error
