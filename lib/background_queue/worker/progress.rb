@@ -89,6 +89,11 @@ module BackgroundQueue::Worker
       @current_sub_progress += percent
       @current_sub_progress = 100 if @current_sub_progress > 100
       update_callback
+    end   
+    
+    def set_task_caption(caption)
+      @sub_caption = caption
+      update_callback
     end
     
     def add_note(notice)
