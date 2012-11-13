@@ -9,6 +9,10 @@ describe "Connection" do
     svr
   }
   
+  let(:socket) {
+    double("socket")
+  }
+  
   
 
   context "connecting" do
@@ -16,7 +20,8 @@ describe "Connection" do
     subject { BackgroundQueue::ClientLib::Connection.new(:client, server) }
     
     it "can successfully connect" do
-      TCPSocket.should_receive(:open).with(:host, :port) { :socket }
+      socket.should_receive(:setsockopt)
+      TCPSocket.should_receive(:open).with(:host, :port) { socket }
       subject.__prv__connect.should eq(true)
     end
     
@@ -38,6 +43,7 @@ describe "Connection" do
     subject { 
       s = BackgroundQueue::ClientLib::Connection.new(:client, server) 
       TCPSocket.should_receive(:open).with(:host, :port) { socket }
+      socket.should_receive(:setsockopt)
       s.__prv__connect
       s
     }
