@@ -41,7 +41,12 @@ module BackgroundQueue::ServerLib
       form_data[:summary] = task.get_job.summary.to_json if task.send_summary? && !task.get_job.summary.nil?
       form_data[:step] = task.step unless task.step.nil?
       req.set_form_data(form_data)
-      req["host"] = task.domain
+      if task.domain.nil?
+        fallback_domain = BackgroundQueue::Utils.get_hash_entry(@server.config.system_task_options, :domain)
+        req["host"] = fallback_domain unless fallback_domain.nil?
+      else
+        req["host"] = task.domain
+      end
       req
     end
     
