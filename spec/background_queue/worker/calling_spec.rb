@@ -56,32 +56,36 @@ describe "Calling" do
   
   context "#init_environment" do
     it "will instanciate an environment and init it" do
+      context = double("context")
       BackgroundQueue::Worker::Environment.any_instance.should_receive(:init_from_controller).with(subject)
-      subject.init_environment
+      BackgroundQueue::Worker::Environment.any_instance.should_receive(:set_context).with(context)
+      subject.init_environment(context)
     end
   end
   
   context "#run_worker" do
     it "should return if check_secret fails" do
       subject.should_receive(:check_secret).and_return(false)
-      subject.run_worker()
+      subject.run_worker({})
     end
     
     it "will call worker if all is ok" do
       env = double("env", :worker=>:worker_name)
+      context = double("context")
       worker = double("worker")
       worker.should_receive(:set_environment).with(env)
       
       subject.should_receive(:call_worker).with(worker, env)
-      subject.should_receive(:init_environment).and_return(env)
+      subject.should_receive(:init_environment).with(context).and_return(env)
       BackgroundQueue::Worker::WorkerLoader.should_receive(:get_worker).with(:worker_name).and_return(worker)
-      subject.run_worker
+      subject.run_worker(context)
     end
     
     it "will render the error and raise it if worker does not initialize correctly" do
-      subject.should_receive(:init_environment).and_raise "ERROR"
+       context = double("context")
+       subject.should_receive(:init_environment).with(context).and_raise "ERROR"
       subject.should_receive(:render).with(:text=>"Error initializing worker: ERROR", :status=>500)
-      expect { subject.run_worker }.to raise_exception("ERROR")
+      expect { subject.run_worker(context) }.to raise_exception("ERROR")
     end
   end
   

@@ -11,8 +11,13 @@ module BackgroundQueue::Worker
       @environment = env
     end
     
+
     def environment
       @environment
+    end
+    
+    def context
+      @environment.context
     end
     
     #update the progress of the currently running task

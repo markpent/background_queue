@@ -8,6 +8,7 @@ module BackgroundQueue::Worker
     attr_reader :priority
     attr_reader :owner_id
     attr_reader :worker
+    attr_reader :context
     attr_reader :logger
     attr_reader :summary
     attr_reader :step
@@ -18,6 +19,7 @@ module BackgroundQueue::Worker
     
     def initialize
       @params = {}
+      @context = {}
     end
     
     def init_from_controller(controller)
@@ -60,6 +62,10 @@ module BackgroundQueue::Worker
         @summary = BackgroundQueue::Utils::AnyKeyHash.new(summary_data)
       end
       @step = controller_params[:step]
+    end
+    
+    def set_context(context)
+      @context = context
     end
     
     def set_output(out)

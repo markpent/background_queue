@@ -213,11 +213,11 @@ describe "Full Test" do
         meth_name = nil
         ss = TestWorkerServer.new(8001)
         ss.start(Proc.new { |controller|
-            #puts controller.params.inspect
-            controller.class.send(:include, BackgroundQueue::Worker::Calling)
-           # puts "B"
-            controller.run_worker
-           # puts "C"
+          #puts controller.params.inspect
+          controller.class.send(:include, BackgroundQueue::Worker::Calling)
+          # puts "B"
+          controller.run_worker({:some=>:context})
+          # puts "C"
         })
         
         
@@ -269,7 +269,7 @@ describe "Full Test" do
         ss = TestWorkerServer.new(8001, true)
         ss.start(Proc.new { |controller|
             controller.class.send(:include, BackgroundQueue::Worker::Calling)
-            controller.run_worker
+            controller.run_worker({:some=>'context'})
         })
         
         
@@ -288,7 +288,7 @@ describe "Full Test" do
         result.code.should eq(:status)
         result.args[:percent].should eq(45)
         result.args[:caption].should eq('Done (2/2)')
-        result.args[:meta].should eq({'test_meta'=>"something"})
+        result.args[:meta].should eq({'test_meta'=>"context"})
         
         ss.allow_to_be_called
         ss.wait_to_be_called.should be_true

@@ -5,13 +5,13 @@ module BackgroundQueue::Worker
   
     #call this method from within the controller action that receives the worker calls. 
     #pass the shared secret in to validate the call: this should equal the secret in the server config.
-    def run_worker
+    def run_worker(context)
       return unless check_secret()
       worker = nil
       env = nil
       begin
         #setup worker environment
-        env = init_environment
+        env = init_environment(context)
         #get worker
         worker = BackgroundQueue::Worker::WorkerLoader.get_worker(env.worker)
         worker.set_environment(env)
@@ -28,9 +28,10 @@ module BackgroundQueue::Worker
 
     end
     
-    def init_environment
+    def init_environment(context)
       env = BackgroundQueue::Worker::Environment.new
       env.init_from_controller(self)
+      env.set_context(context)
       env
     end
     
