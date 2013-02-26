@@ -73,16 +73,18 @@ describe BackgroundQueue::ServerLib::WorkerThread do
       subject.call_worker(task).should be_true
     end
     
-    it "will regegister as a ok worker if send_request returns :worker_error" do
+    it "will reregister as an ok worker if send_request returns :worker_error" do
       server.stub('running?'=>true)
       worker = double("worker")
       task = DefaultTask.new
-      server.task_queue.should_receive(:add_task_to_error_list).with(task)
+      task.should_receive(:increment_worker_error_count)
+      task.should_receive(:get_worker_error_count).and_return(0)
       worker_client = double("worker_client")
       subject.should_receive(:build_client).and_return(worker_client)
       worker_client.should_receive(:send_request).with(worker, task, :secret).and_return(:worker_error)
       server.workers.should_receive(:get_next_worker).and_return(worker)
       server.workers.should_receive(:finish_using_worker).with(worker, true)
+      server.task_queue.should_receive(:finish_task).with(task)
       subject.call_worker(task).should be_true
     end
     

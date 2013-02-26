@@ -79,4 +79,16 @@ class SimpleTask
   def replaced_while_waiting_to_retry?
     @error_status == :replaced_while_waiting_to_retry
   end
+  
+  def cancelled?
+    @options[:cancelled] == true
+  end
+  
+  def retry_task?
+    @options[:retry_task] == true
+  end
+  
+  def set_as_errored
+    
+  end
 end

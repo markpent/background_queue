@@ -19,7 +19,12 @@ module BackgroundQueue::Worker
         logger.error("Error initializing worker: #{e.message}")
         logger.debug(e.backtrace.join("\n"))
         render :text=>"Error initializing worker: #{e.message}", :status=>500
-        raise e
+        if defined?(handle_worker_error)
+          handle_worker_error("INIT", e)
+        else
+          raise e
+        end
+        return false
       end
       #puts worker
       #call worker
@@ -61,11 +66,19 @@ module BackgroundQueue::Worker
           else
             worker.run
           end
-        rescue Exception=>e
-          logger.error("Error calling worker: #{e.message}")
-          logger.error(e.backtrace.join("\n"))
-          worker.logger.error("Error calling worker: #{e.message}")
-          worker.logger.error(e.backtrace.join("\n"))
+          worker.send_call_finished_status
+        rescue Exception=>ex
+          begin
+            logger.error("Error calling worker: #{ex.message}")
+            logger.error(ex.backtrace.join("\n"))
+            worker.logger.error("Error calling worker: #{ex.message}")
+            worker.logger.error(ex.backtrace.join("\n"))
+            if defined?(handle_worker_error)
+              handle_worker_error("CALL", ex)
+            end
+          rescue Exception=>nex
+          end
+          worker.send_fatal_error("Fatal Error: #{ex.message}")
         ensure
           worker.set_environment(nil)
           revert_process_name

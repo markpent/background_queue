@@ -63,55 +63,66 @@ module BackgroundQueue::ServerLib
 
     def add_item(task)
       task.set_job(self)
-      @total_tasks += 1
-      unless task.is_excluded_from_count?
-        @total_counted_tasks += 1
-      end
-      if task.weighted?
-        @total_weighted_tasks += 1
-        @total_weighted_percent += task.weighted_percent
-      end
-      #@synchronous_count+=1 if task.synchronous? #the queue only goes into sync mode once the task is running/about to run
-      unless task.initial_progress_caption.nil? || task.initial_progress_caption.length == 0 || @current_progress[:percent] > 0
-        @current_progress[:caption] = task.initial_progress_caption
-      end
-      push(task)
+      @mutex.synchronize {
+        @total_tasks += 1
+        unless task.is_excluded_from_count?
+          @total_counted_tasks += 1
+        end
+        if task.weighted?
+          @total_weighted_tasks += 1
+          @total_weighted_percent += task.weighted_percent
+        end
+        #@synchronous_count+=1 if task.synchronous? #the queue only goes into sync mode once the task is running/about to run
+        unless task.initial_progress_caption.nil? || task.initial_progress_caption.length == 0 || @current_progress[:percent] > 0
+          @current_progress[:caption] = task.initial_progress_caption
+        end
+        push(task)
+      }
     end
     
     def next_item
       item = pop
-      @running_items += 1 if item
-      @synchronous_count+=1 if item && item.synchronous?
+      @mutex.synchronize {
+        @running_items += 1 if item
+        @synchronous_count+=1 if item && item.synchronous?
+      }
       item
     end
     
     def remove_item(item)
+      return if @cancelled
       remove(item)
     end
     
     def finish_item(item)
-      @running_items -= 1
-      @synchronous_count-=1 if item.synchronous?
+      @mutex.synchronize {
+        @running_items -= 1
+        @synchronous_count-=1 if item.synchronous?
+      }
     end
     
     def synchronous?
       next_item = peek
-      @synchronous_count > 0 || (next_item && next_item.synchronous?)
+      @mutex.synchronize {
+        @synchronous_count > 0 || (next_item && next_item.synchronous?)
+      }
     end
     
     def set_worker_status(status)
-      if status[:meta]
-        update_status_meta(status[:meta])
-      elsif status[:summary]
-        update_summary_meta(status)
-      else
-        running_status = get_running_status(status)
-        if status[:percent] >= 100
-          update_finished_status(status)
+      @mutex.synchronize {
+        if status[:meta]
+          update_status_meta(status[:meta])
+        elsif status[:summary]
+          update_summary_meta(status)
         else
-          update_running_status(running_status, status)
+          running_status = get_running_status(status)
+          if status[:percent] >= 100
+            update_finished_status(status)
+          else
+            update_running_status(running_status, status)
+          end
         end
-      end
+      }
     end
     
     def get_running_status(status)
@@ -188,6 +199,27 @@ module BackgroundQueue::ServerLib
       else
         logger.error("Unknown summary action: #{status[:summary]}")
       end
+    end
+    
+    def cancelled?
+      @mutex.synchronize {
+        @cancelled == true
+      }
+    end
+    
+    def cancel(finish_message)
+      task_ids = []
+      @mutex.synchronize {
+        @cancelled = true
+        #remove all tasks not running
+        item = pop
+        while item
+          task_ids << item.id
+          item = pop
+        end
+      }
+      update_current_caption({:caption=>finish_message})
+      server.task_queue.cancel_job(task_ids, @running_items + task_ids.length, @owner.id, @id)
     end
     
     def update_finished_status(status)
@@ -289,6 +321,11 @@ module BackgroundQueue::ServerLib
 
     def get_current_progress
       @current_progress
+    end
+    
+    
+    def set_as_errored(task)
+      cancel("Fatal Error Occured")
     end
     
    

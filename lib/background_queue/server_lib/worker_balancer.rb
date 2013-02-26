@@ -17,6 +17,22 @@ module BackgroundQueue::ServerLib
       end
     end
     
+    def monitor_offline_workers
+      @check_offline_servers_thread = Thread.new {
+        while @server.running?
+          check_offline
+          sleep(1)
+        end
+      }
+    end
+    
+    def finish_monitoring_offline_servers
+      unless @check_offline_servers_thread.nil?
+        @check_offline_servers_thread.wakeup
+        @check_offline_servers_thread.join
+      end
+    end
+    
     #poll the workers that are marked as offline, and mark them online if the polling succeeded
     def check_offline
       
@@ -24,7 +40,9 @@ module BackgroundQueue::ServerLib
 
       for worker in workers_to_check
         client = BackgroundQueue::ServerLib::WorkerClient.new(@server)
+        @server.logger.debug("Polling #{worker.uri}")
         if client.send_request(worker, build_poll_task, @server.config.secret)
+          @server.logger.debug("Polled #{worker.uri} successfully")
           register_online(worker)
         end
       end
@@ -82,7 +100,7 @@ module BackgroundQueue::ServerLib
     
     def build_poll_task
       if @poll_task.nil?
-        @poll_task = BackgroundQueue::ServerLib::Task.new(:owner_id, :job_id, :id, 1, :poll_worker, {}, @server.config.system_task_options)
+        @poll_task = BackgroundQueue::ServerLib::Task.new(:polling_owner_id, :polling_job_id, :polling_task_id, 1, :poll_worker, {}, @server.config.system_task_options)
         @poll_task.set_job(BackgroundQueue::ServerLib::NullJob.new)
       end
       @poll_task

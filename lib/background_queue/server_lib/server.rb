@@ -1,5 +1,6 @@
 require 'optparse'
 require 'logger'
+require 'pp'
 
 module BackgroundQueue::ServerLib
   class Server
@@ -204,6 +205,15 @@ module BackgroundQueue::ServerLib
         puts "Terminating..."
         self.stop()
       end
+      Signal.trap("USR1") do
+        if logger
+          logger.error("USR1 signal")
+          logger.error pp(caller_for_all_threads, '')
+        else
+          puts "USR1 signal"
+          pp caller_for_all_threads
+        end
+      end
     end
     
     
@@ -253,6 +263,8 @@ module BackgroundQueue::ServerLib
       @thread_manager = BackgroundQueue::ServerLib::ThreadManager.new(self, self.config.connections_per_worker)
       
       @workers = BackgroundQueue::ServerLib::WorkerBalancer.new(self)
+      @workers.monitor_offline_workers
+      
       @task_queue = BackgroundQueue::ServerLib::BalancedQueue.new(self)
       
       @thread_manager.start(BackgroundQueue::ServerLib::WorkerThread)
@@ -273,6 +285,7 @@ module BackgroundQueue::ServerLib
       @event_server.stop
       @thread_manager.wait(timeout_secs)
       @error_tasks.flush
+      @workers.finish_monitoring_offline_servers
       save_tasks(config.task_file)
     end
     

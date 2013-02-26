@@ -12,6 +12,7 @@ module BackgroundQueue::Worker
     attr_reader :logger
     attr_reader :summary
     attr_reader :step
+    attr_reader :controller
     
     attr_reader :server_address
     

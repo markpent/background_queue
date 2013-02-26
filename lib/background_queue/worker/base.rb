@@ -61,6 +61,14 @@ module BackgroundQueue::Worker
       self.environment.send_data({:summary=>"res", :type=>type.to_s}.to_json)
     end
     
+    def send_fatal_error(error_message)
+      self.environment.send_data({:error=>error_message}.to_json)
+    end
+    
+    def send_call_finished_status
+      self.environment.send_data({:finished=>true}.to_json)
+    end
+    
     #virtual function: called to process a worker request
     def run
       raise "run() Not Implemented on worker #{self.class.name}"

@@ -82,8 +82,8 @@ describe "Calling" do
     end
     
     it "will render the error and raise it if worker does not initialize correctly" do
-       context = double("context")
-       subject.should_receive(:init_environment).with(context).and_raise "ERROR"
+      context = double("context")
+      subject.should_receive(:init_environment).with(context).and_raise "ERROR"
       subject.should_receive(:render).with(:text=>"Error initializing worker: ERROR", :status=>500)
       expect { subject.run_worker(context) }.to raise_exception("ERROR")
     end
@@ -98,6 +98,24 @@ describe "Calling" do
       subject.should_receive(:revert_process_name)
       env.should_receive(:set_output).with(:output)
       worker.should_receive(:run)
+      worker.should_receive(:send_call_finished_status)
+      subject.should_receive(:render) { |opts|
+        opts[:text].call(:response, :output)
+      }
+      subject.call_worker(worker, env)
+      subject.headers['X-Accel-Buffering'].should eq('no')
+    end
+    
+    it "will call worker.send_fatal_error if an error occurs in render block" do
+      env = double("env", :step=>nil)
+      worker = double("worker")
+      worker.should_receive(:set_environment).with(nil)
+      subject.should_receive(:set_process_name).with(env)
+      subject.should_receive(:revert_process_name)
+      env.should_receive(:set_output).with(:output)
+      worker.should_receive(:run).and_raise "SOME ERROR"
+      worker.should_not_receive(:send_call_finished_status)
+      worker.should_receive(:send_fatal_error).with("Fatal Error: SOME ERROR")
       subject.should_receive(:render) { |opts|
         opts[:text].call(:response, :output)
       }

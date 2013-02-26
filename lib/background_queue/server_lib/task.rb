@@ -105,8 +105,38 @@ module BackgroundQueue::ServerLib
       @error_count = get_error_count + 1
     end
     
+    def get_worker_error_count
+      if @error_worker_count.nil?
+        0
+      else
+        @error_worker_count
+      end
+    end
+    
+    def increment_worker_error_count
+      @error_worker_count = get_worker_error_count + 1
+    end
+    
+    def retry_task?
+      @options[:retry_limit] && @options[:retry_limit] > get_worker_error_count
+    end
+    
+    def errors_allowed?
+      @options[:errors_allowed]
+    end   
+    
+    def set_as_errored
+      if @job && !errors_allowed?
+        @job.set_as_errored(self)
+      end
+    end
+    
     def step
       @options[:step]
+    end
+    
+    def cancelled?
+      @job && @job.cancelled?
     end
     
     

@@ -28,6 +28,7 @@ module BackgroundQueue::ServerLib
       while @server.running?
         worker = @server.workers.get_next_worker
         if worker.nil?
+          @server.logger.debug("no worker available... sleeping...")
           Kernel.sleep(1) unless !@server.running?
         else
           client = build_client
@@ -40,17 +41,24 @@ module BackgroundQueue::ServerLib
             @server.change_stat(:run_tasks, 1)
             return true
           else
-            @server.logger.debug("failed calling worker for task #{task.id}")
+            @server.logger.debug("failed calling worker for task #{task.id} (#{result})")
             @server.workers.finish_using_worker(worker, result == :worker_error)
-            @server.task_queue.add_task_to_error_list(task)
+            if result == :worker_error #the retry logic only tests :worker_errors, not other errors
+              task.increment_worker_error_count 
+              @server.logger.debug("Incremented worker error count for task #{task.id} to #{task.get_worker_error_count}")
+            end
+              
+            retry_task = (result != :worker_error || task.retry_task?)
+
+            if !retry_task
+              task.set_as_errored #let the task know it did not finish successfully...
+              @server.task_queue.finish_task(task)
+              @server.change_stat(:running, -1)
+              @server.change_stat(:run_tasks, 1)
+            else
+              @server.task_queue.add_task_to_error_list(task)
+            end
             return result != :stop
-            #error_count += 1
-            #if error_count > 5
-            #  @server.logger.debug("error count exceeded for task #{task.id}, returning to queue")
-            #  @server.task_queue.finish_task(task)
-            #  @server.task_queue.add_task(task)
-            #  return true
-            #end
           end
         end
       end

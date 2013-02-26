@@ -5,9 +5,12 @@ class TestWorkerServer
   
   attr_reader :control_calling
   
+  attr_accessor :is_polling_call
+  
   def initialize(port, control_calling = false)
     @port = port
     @control_calling = control_calling
+    @is_polling_call = false
   end
   
   def start(proc)
@@ -87,9 +90,10 @@ class TestWorkerServer
   
     def do_POST(request, response)
       begin
+        @test_server.is_polling_call = false
         response.test_server = @test_server
         @test_server.can_to_be_called? if @test_server.control_calling
-        @proc.call(TestWorkerServer::Contoller.new(request, response))
+        @proc.call(TestWorkerServer::Contoller.new(request, response, @test_server))
       rescue Exception=>e
         puts e.message
         puts e.backtrace.join("\n")
@@ -103,12 +107,14 @@ class TestWorkerServer
     attr_accessor :request
     attr_accessor :response
     attr_accessor :params
+    attr_accessor :test_server
       
-    def initialize(request, response)
+    def initialize(request, response, test_server)
       @request = request
       @response = response
       @logger = WEBrick::BasicLog.new("/tmp/bq-controller.log", 5)
       @params = BackgroundQueue::Utils::AnyKeyHash.new(@request.query)
+      @test_server = test_server
     end
     
     def headers
@@ -130,6 +136,10 @@ class TestWorkerServer
         @response.chunked = true
         @response.body = opts[:text]
       end
+    end
+    
+    def handle_worker_error(step, ex)
+      logger.error("Error during #{step}: #{ex.message}")
     end
     
   end
@@ -199,7 +209,7 @@ module SocketExtension
   
   def close
     super
-    @test_server.mark_as_called unless @test_server.nil?
+    @test_server.mark_as_called unless @test_server.nil? || @test_server.is_polling_call
   end
 end
   

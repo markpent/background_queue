@@ -25,11 +25,18 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
       subject.should_receive(:build_request).with(uri, task, "auth").and_return(:post_request)
       
+      http_client = double("http_client")
+      http_client.should_receive("read_timeout=").with(86400)
+
+      subject.should_receive(:build_http_client).with(worker_config).and_return(http_client)
+      
       http_instance = double("http")
       http_instance.should_receive(:request).with(:post_request).and_yield(:http_response)
       subject.should_receive(:read_response).with(worker_config, :http_response, task).and_return(true)
+      subject.should_receive('has_received_finish?').and_return(true)
       
-      Net::HTTP.should_receive(:start).with("127.0.0.1", 3000).and_yield(http_instance)
+      http_client.should_receive(:start).and_yield(http_instance)
+      
       subject.send_request(worker_config, task, "auth").should be_true
       
     end
@@ -39,8 +46,29 @@ describe BackgroundQueue::ServerLib::WorkerClient do
       worker_config = BackgroundQueue::ServerLib::Worker.new(uri)
       task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
       subject.should_receive(:build_request).with(uri, task, "auth").and_return(:post_request)
-      Net::HTTP.should_receive(:start).with("127.0.0.1", 3000).and_raise("connection error")
+      Net::HTTP.any_instance.should_receive(:start).and_raise("connection error")
       subject.send_request(worker_config, task, "auth").should eq(:fatal_error)
+    end
+    
+    it "will fail if the finish status is not sent" do
+      uri = URI("http://127.0.0.1:3000/worker/run")
+      worker_config = BackgroundQueue::ServerLib::Worker.new(uri)
+      task = SimpleTask.new(:owner_id, :job_id, :task_id, 3, { :domain=>"www.example.com" })
+      subject.should_receive(:build_request).with(uri, task, "auth").and_return(:post_request)
+      
+      http_client = double("http_client")
+      http_client.should_receive("read_timeout=").with(86400)
+
+      subject.should_receive(:build_http_client).with(worker_config).and_return(http_client)
+      
+      http_instance = double("http")
+      http_instance.should_receive(:request).with(:post_request).and_yield(:http_response)
+      subject.should_receive(:read_response).with(worker_config, :http_response, task).and_return(true)
+      subject.should_receive('has_received_finish?').and_return(false)
+      
+      http_client.should_receive(:start).and_yield(http_instance)
+      
+      subject.send_request(worker_config, task, "auth").should be_true
     end
   end
   
@@ -100,12 +128,28 @@ describe BackgroundQueue::ServerLib::WorkerClient do
   end
   
   context "#set_worker_status" do
+    let(:status) {
+      {"a"=>"b"}
+    }
+    let(:kstatus) {
+      {:a=>"b"}
+    }
+    let(:task) {DefaultTask.new}
+    
     it "calls set_worker_status on the task" do
-      task = DefaultTask.new
-      
-      BackgroundQueue::Utils::AnyKeyHash.should_receive(:new).with(:status).and_return(:kstatus)
-      task.should_receive(:set_worker_status).with(:kstatus)
-      subject.__prv__set_worker_status(:status, task)
+      BackgroundQueue::Utils::AnyKeyHash.should_receive(:new).with(status).and_return(kstatus)
+      task.should_receive(:set_worker_status).with(kstatus)
+      subject.__prv__set_worker_status(status, task)
+    end
+    
+    it "will call set_has_received_finish if status[:finished]" do
+      finish_status = {
+        :finished=>true
+      }
+      BackgroundQueue::Utils::AnyKeyHash.should_receive(:new).with(status).and_return(finish_status)
+      subject.should_receive(:set_has_received_finish)
+      task.should_not_receive(:set_worker_status).with(kstatus)
+      subject.__prv__set_worker_status(status, task)
     end
   end
   

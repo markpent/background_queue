@@ -49,10 +49,27 @@ module BackgroundQueue::ServerLib
           @server.logger.debug("Not finishing task that was replaced while waiting to retry (#{task.id})")
           return
         end
-        finish_item(task)
+        finish_item(task) unless task.cancelled?
         existing_task = @task_registry.de_register(task.id)
         if existing_task
           add_item(task)
+        end
+      }
+    end
+    
+    def cancel_job(task_ids, running_task_count, owner_id, job_id)
+      @server.logger.debug("BalancedQueue.cancel_job (#{task_ids.inspect}, #{running_task_count}, #{owner_id}, #{job_id})")
+      @thread_manager.protect_access {
+        owner = get_queue(owner_id, false)
+        raise "Unable to cancel job becuase owner #{owner_id} does not exist" if owner.nil?
+        @running_items -= running_task_count
+        
+        
+        for task_id in task_ids
+          existing_task = @task_registry.de_register(task_id)
+          if existing_task
+            add_item(task)
+          end
         end
       }
     end
