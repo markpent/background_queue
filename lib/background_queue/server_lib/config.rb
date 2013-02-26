@@ -16,6 +16,12 @@ module BackgroundQueue::ServerLib
   #       - http://127.0.0.1:801/background_queue
   #     secret: this_is_used_to_make_sure_it_is_secure
   #     task_file: /path/to/file/to/save/running/tasks
+  #     error_reporting:
+  #       to: mark@some.domain.com
+  #       from: optional@from.address
+  #       subject: Error from background queue:
+  #       server: localhost
+  #       helo: this.server (defaults to this hostname)
   #   production:
   #     address: 
   #       host: 0.0.0.0
@@ -33,6 +39,17 @@ module BackgroundQueue::ServerLib
   #         args: 
   #           arg1: 22
   #           arg2: "hello"
+  #     error_reporting:
+  #       to: mark@some.domain.com
+  #       from: optional@from.address
+  #       subject: Error from background queue:
+  #       server: localhost
+  #       port: 25
+  #       tls: false
+  #       helo: this.server (defaults to this hostname)
+  #       username: something
+  #       password: pwd
+  #       auth_type: login
   class Config < BackgroundQueue::Config
     
     #the list of workers that are called using http
@@ -57,6 +74,10 @@ module BackgroundQueue::ServerLib
     #used for polling task and jobs. Should include a domain entry if your worker uses domain lookups
     attr_reader :system_task_options
     
+    #error reporting settings
+    attr_reader :error_reporting
+    
+    
     #load the configration using a hash just containing the environment
     def self.load_hash(env_config, path)
       BackgroundQueue::ServerLib::Config.new(
@@ -66,7 +87,8 @@ module BackgroundQueue::ServerLib
         get_connections_per_worker_entry(env_config, path),
         get_jobs_entry(env_config, path),
         get_system_task_options_entry(env_config, path),
-        get_task_file_entry(env_config, path)
+        get_task_file_entry(env_config, path),
+        get_error_reporting_entry(env_config, path)
       )
     end
     
@@ -185,11 +207,15 @@ module BackgroundQueue::ServerLib
           nil
         end
       end
+      
+      def get_error_reporting_entry(env_config, path)
+        ErrorReporting.new(BackgroundQueue::Utils.get_hash_entry(env_config, :error_reporting))
+      end
     end
     
     
     #do not call this directly, use a load_* method
-    def initialize(workers, secret, address, connections_per_worker, jobs, system_task_options, task_file)
+    def initialize(workers, secret, address, connections_per_worker, jobs, system_task_options, task_file, error_reporting)
       @workers = workers
       @secret = secret
       @address = address
@@ -197,6 +223,7 @@ module BackgroundQueue::ServerLib
       @jobs = jobs
       @system_task_options = system_task_options
       @task_file = task_file
+      @error_reporting = error_reporting
     end
     
     class Address
@@ -331,6 +358,76 @@ module BackgroundQueue::ServerLib
       def run(server)
         task = BackgroundQueue::ServerLib::Task.new(:system, :scheduled, self.object_id, 2, @worker, @args, server.config.system_task_options)
         server.task_queue.add_task(task)
+      end
+      
+    end
+    
+    
+    #error reporting settings
+    class ErrorReporting
+      
+      attr_accessor :enabled
+      attr_accessor :to
+      attr_accessor :from
+      attr_accessor :prefix
+      attr_accessor :server
+      attr_accessor :port
+      attr_accessor :auth_type
+      attr_accessor :tls
+      attr_accessor :username
+      attr_accessor :password
+      attr_accessor :helo
+    
+      def initialize(config_entry)
+        if config_entry.nil?
+          @enabled = false
+        elsif config_entry.kind_of?(Hash)
+          @enabled = true
+          @to = BackgroundQueue::Utils.get_hash_entry(config_entry, :to)
+          @prefix = BackgroundQueue::Utils.get_hash_entry(config_entry, :subject)
+          @server = BackgroundQueue::Utils.get_hash_entry(config_entry, :server) 
+          @helo = BackgroundQueue::Utils.get_hash_entry(config_entry, :helo) 
+          @from = BackgroundQueue::Utils.get_hash_entry(config_entry, :from) 
+          @tls = BackgroundQueue::Utils.get_hash_entry(config_entry, :tls) == true
+          @port = BackgroundQueue::Utils.get_hash_entry(config_entry, :port)
+          @auth_type = BackgroundQueue::Utils.get_hash_entry(config_entry, :auth_type)
+          @username = BackgroundQueue::Utils.get_hash_entry(config_entry, :username)
+          @password = BackgroundQueue::Utils.get_hash_entry(config_entry, :password)
+          
+          @prefix = "Error from background queue:" if @prefix.nil?
+          @server = 'localhost' if @server.nil? || @server.strip.length == 0
+          @from = "bgqueue@#{get_fqdn}" if @from.nil? || @from.strip.length == 0
+          @port = 25 if @port.nil?
+          @helo = get_fqdn if @helo.nil? || @helo.strip.length == 0
+          
+          if @auth_type.nil? || @auth_type.strip.length == 0
+            @auth_type = :login
+          else
+            @auth_type = @auth_type.to_s.downcase.intern
+          end
+          
+          raise BackgroundQueue::LoadError, "Missing error_reporting 'to' (email address)" if @to.nil? || @to.strip.length == 0
+          
+        else
+          raise BackgroundQueue::LoadError, "Invalid data type (#{config_entry.class.name}), expecting Hash"
+        end
+      end
+      
+      def get_fqdn
+        if @fqdn.nil?
+          begin
+            @fqdn = %x[hostname -f]
+          rescue Exception=>e
+            require 'socket'
+            @fqdn = Socket.gethostbyname(Socket.gethostname).first
+          end
+          if @fqdn.nil?
+            @fqdn = "unknown.host"
+          else
+            @fqdn.strip!
+          end
+        end
+        @fqdn
       end
       
     end

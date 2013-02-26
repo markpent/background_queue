@@ -400,7 +400,10 @@ describe "Server Config" do
             :workers=>['http://127.0.0.1:801/background_queue', 'http://127.0.0.1:802/background_queue'],
             :secret=>'1234567890123456789012345678901234567890',
             :connections_per_worker=>10,
-            :jobs=>[{:at=>"some time", :worker=>:something}]
+            :jobs=>[{:at=>"some time", :worker=>:something}],
+            :error_reporting=>{
+              :to=>"test@test.com"
+            }
         }, :path_that_exists)
         config.workers.length.should eq(2)
         config.workers.first.uri.port.should eq(801)
@@ -408,6 +411,12 @@ describe "Server Config" do
         config.jobs.length.should eq(1)
         config.jobs.first.at.should eq('some time')
         config.secret.should eq('1234567890123456789012345678901234567890')
+        config.error_reporting.enabled.should be_true
+        config.error_reporting.to.should eq("test@test.com")
+        config.error_reporting.server.should eq("localhost")
+        config.error_reporting.port.should eq(25)
+        config.error_reporting.helo.should_not be_nil
+        config.error_reporting.from.should_not be_nil
       end
       
       it "should fail when missing workers" do

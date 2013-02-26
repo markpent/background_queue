@@ -1,6 +1,7 @@
 require 'optparse'
 require 'logger'
 require 'pp'
+require 'net/smtp'
 
 module BackgroundQueue::ServerLib
   class Server
@@ -28,8 +29,10 @@ module BackgroundQueue::ServerLib
       argv = argv.clone
       cmd = argv.shift
       
-      if cmd.nil?
-        raise BackgroundQueue::ServerLib::InitError, "Usage: server command [options]"
+      if cmd.nil? || cmd == "-h"
+        cmd = "-h"
+        argv.unshift cmd
+        cmd = nil
       end
       
       options = {:command=>cmd.nil? ? nil : cmd.downcase.intern}
@@ -39,7 +42,7 @@ module BackgroundQueue::ServerLib
       OptionParser.new do |opts|
         opts.banner = "Usage: server command [options]"
         case options[:command]
-          when :start, :test, :run
+          when :start, :test, :run, :test_email
             opts.on("-c", "--config PATH", "Configuration Path") do |cp|
               options[:config] = cp
             end
@@ -120,6 +123,50 @@ module BackgroundQueue::ServerLib
         #just make a fallback logger...
         @logger = Logger.new($stderr)
         set_logging_level(@logger, "fatal")
+      end
+    end
+    
+    def report_error(subject, message)
+      if config.error_reporting.enabled
+        @logger.debug("Reporting error #{subject}")
+        begin
+          @latest_error_reporting_thread = Thread.new(config.error_reporting, @logger, subject, message) { |error_reporting, t_logger, t_subject, t_message|
+            begin
+              t_logger.debug("Start")
+              msgstr = <<MESSAGE_END
+From: #{error_reporting.from}
+To: #{error_reporting.to}
+Subject: #{error_reporting.prefix}#{t_subject}
+
+#{t_message}
+
+MESSAGE_END
+
+  t_logger.debug("Message built")
+              smtp = Net::SMTP.new error_reporting.server, error_reporting.port
+              smtp.debug_output=$stdout
+              smtp.enable_starttls if error_reporting.tls
+              if error_reporting.username
+                smtp.start(error_reporting.helo,error_reporting.username,error_reporting.password,error_reporting.auth_type) do |smtp_server|
+                 smtp_server.send_message msgstr, error_reporting.from, error_reporting.to
+                end
+              else
+                smtp.start(error_reporting.helo) do |smtp_server|
+                 smtp_server.send_message msgstr, error_reporting.from, error_reporting.to
+                end
+              end
+              t_logger.debug("Sent error report")
+            rescue Exception=>e
+              t_logger.error("Error reporting error: #{e.message}")
+              t_logger.error(e.backtrace.join("\n"))
+            end
+          }
+        rescue Exception=>ex
+          @logger.error("Error reporting error: #{ex.message}")
+          @logger.error(ex.backtrace.join("\n"))
+        end
+      else
+        @logger.debug("Not reporting error #{subject}")
       end
     end
     
@@ -242,6 +289,9 @@ module BackgroundQueue::ServerLib
           daemonize(options)
         elsif options[:command] == :run
           run(options)
+        elsif options[:command] == :test_email
+          report_error("Checking Error Reporting", "Successful")
+          @latest_error_reporting_thread.join unless @latest_error_reporting_thread.nil?
         else
           raise BackgroundQueue::ServerLib::InitError, "Unknown Command: #{options[:command]}"
         end

@@ -26,11 +26,8 @@ module BackgroundQueue::Worker
         end
         return false
       end
-      #puts worker
-      #call worker
       call_worker(worker, env)
       true
-
     end
     
     def init_environment(context)
