@@ -51,10 +51,10 @@ module BackgroundQueue::ServerLib
             retry_task = (result != :worker_error || task.retry_task?)
 
             if !retry_task
-              task.set_as_errored #let the task know it did not finish successfully...
               @server.task_queue.finish_task(task)
               @server.change_stat(:running, -1)
               @server.change_stat(:run_tasks, 1)
+              task.set_as_errored #let the task know it did not finish successfully...
             else
               @server.task_queue.add_task_to_error_list(task)
             end

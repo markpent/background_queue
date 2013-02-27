@@ -60,6 +60,10 @@ module BackgroundQueue::ServerLib
     def server
       @owner.server
     end
+    
+    def logger
+      server.logger
+    end
 
     def add_item(task)
       task.set_job(self)
@@ -218,8 +222,9 @@ module BackgroundQueue::ServerLib
           item = pop
         end
       }
-      update_current_caption({:caption=>finish_message})
       server.task_queue.cancel_job(task_ids, @running_items + task_ids.length, @owner.id, @id)
+      update_current_caption({:caption=>finish_message})
+      update_current_progress
     end
     
     def update_finished_status(status)
@@ -288,7 +293,7 @@ module BackgroundQueue::ServerLib
     end
     
     def get_current_progress_caption
-      if self.current_running_status
+      if self.current_running_status && @cancelled != true
         update_current_caption(self.current_running_status)
       end
       @current_caption
@@ -300,6 +305,7 @@ module BackgroundQueue::ServerLib
       if total_counted_tasks > 1 && status[:exclude] != true
         caption = "#{caption} (#{self.get_current_counted_tasks}/#{self.total_counted_tasks})"
       end
+      #logger.debug("update_current_caption:#{caption}")
       @current_caption = caption
     end
     
@@ -320,6 +326,7 @@ module BackgroundQueue::ServerLib
     end
 
     def get_current_progress
+      #logger.debug("get_current_progress:#{@current_progress.inspect}")
       @current_progress
     end
     
