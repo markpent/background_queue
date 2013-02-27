@@ -144,7 +144,7 @@ MESSAGE_END
 
   t_logger.debug("Message built")
               smtp = Net::SMTP.new error_reporting.server, error_reporting.port
-              smtp.debug_output=$stdout
+              smtp.debug_output=$stdout if @start_command == :test_email
               smtp.enable_starttls if error_reporting.tls
               if error_reporting.username
                 smtp.start(error_reporting.helo,error_reporting.username,error_reporting.password,error_reporting.auth_type) do |smtp_server|
@@ -281,15 +281,18 @@ MESSAGE_END
     
     def start(options)
       begin
+        @start_command = options[:command]
         load_configuration(options[:config])
         init_logging(options[:log_file], options[:log_level])
-        check_not_running(options) unless options[:skip_pid]
-        write_pid(options) unless options[:skip_pid] #this will make sure we can write the pid file... the daemon will write it again
-        if options[:command] == :start
+        unless options[:skip_pid] || @start_command == :test_email
+          check_not_running(options) 
+          write_pid(options)  #this will make sure we can write the pid file... the daemon will write it again
+        end
+        if @start_command == :start
           daemonize(options)
-        elsif options[:command] == :run
+        elsif @start_command == :run
           run(options)
-        elsif options[:command] == :test_email
+        elsif @start_command == :test_email
           report_error("Checking Error Reporting", "Successful")
           @latest_error_reporting_thread.join unless @latest_error_reporting_thread.nil?
         else
