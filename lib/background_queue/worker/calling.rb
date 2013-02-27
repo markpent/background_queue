@@ -37,23 +37,13 @@ module BackgroundQueue::Worker
       env
     end
     
-    def set_process_name(env)
-      unless BackgroundQueue::Worker::Config.process_name_prefix.nil?
-        $0 = "#{BackgroundQueue::Worker::Config.process_name_prefix}:#{env.worker}:#{env.owner_id}:#{env.job_id}:#{env.task_id}"
-      end
-    end
     
-    def revert_process_name
-      unless BackgroundQueue::Worker::Config.process_name_prefix.nil?
-        $0 = "#{BackgroundQueue::Worker::Config.process_name_prefix}:idle"
-      end
-    end
     
     def call_worker(worker, env)
       headers['X-Accel-Buffering'] = 'no' #passenger standalone uses nginx. This will turn buffering off in nginx
       render :text => lambda { |response,output| 
         env.set_output(output)
-        set_process_name(env)
+        env.set_process_name
         begin
           case env.step
           when "start"
@@ -78,7 +68,7 @@ module BackgroundQueue::Worker
           worker.send_fatal_error("Fatal Error: #{ex.message}")
         ensure
           worker.set_environment(nil)
-          revert_process_name
+          env.revert_process_name
         end
       }, :type=>"text/text"
     end

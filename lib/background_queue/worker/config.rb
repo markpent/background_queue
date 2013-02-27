@@ -2,8 +2,10 @@ module BackgroundQueue::Worker
   class Config
       
     @@worker_path = nil
-    @separate_logs = false
+    @@separate_logs = false
     @@process_name_prefix = "bgq"
+    @@support_process_monitoring = false
+    @@process_timeout = 600
     
     def self.secret=(auth)
       @@secret = auth
@@ -36,13 +38,13 @@ module BackgroundQueue::Worker
     end
     
     def self.separate_logs=(use_separate_logs)
-      @separate_logs = use_separate_logs
+      @@separate_logs = use_separate_logs
     end
     
     #should the worker have its own log file per instance? (makes it easier to backtrack errors)
     #if true, the log file is based on the job id. Each log line will have the task id.
     def self.separate_logs?
-      @separate_logs
+      @@separate_logs
     end
     
     
@@ -53,5 +55,25 @@ module BackgroundQueue::Worker
     def self.process_name_prefix
       @@process_name_prefix
     end
+    
+    #this allows for an external tool to monitor for dead/hung workers.
+    #if true, a process will be named 'BackgroundQueue::Worker::Config.process_name_prefix:TO[time_to_expire][max_memory]:worker:job:task'
+    def self.support_process_monitoring=(yesno)
+      @@support_process_monitoring = yesno
+    end
+    
+    def self.support_process_monitoring
+      @@support_process_monitoring
+    end
+    
+    def self.process_timeout=(seconds)
+      @@process_timeout = seconds
+    end
+    
+    def self.process_timeout
+      @@process_timeout
+    end
+    
+    
   end
 end

@@ -96,5 +96,12 @@ module BackgroundQueue::Worker
       self.environment.summary
     end
     
+    #this needs to be called less then every BackgroundQueue::Worker::Config.process_timeout seconds or an external process monitoring task will kill the worker
+    def notify_process_running(max_memory=nil)
+      if BackgroundQueue::Worker::Config.support_process_monitoring
+        self.environment.set_process_name(max_memory)
+      end
+    end
+    
   end
 end

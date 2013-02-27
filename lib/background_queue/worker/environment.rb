@@ -97,5 +97,31 @@ module BackgroundQueue::Worker
       
     end
     
+    def set_process_name(max_memory=nil)
+      prefix = nil
+      unless BackgroundQueue::Worker::Config.process_name_prefix.nil?
+        prefix = BackgroundQueue::Worker::Config.process_name_prefix + ":"
+      end
+      if BackgroundQueue::Worker::Config.support_process_monitoring
+        prefix = "" if prefix.nil?
+        timeout_at = Time.now.to_i + BackgroundQueue::Worker::Config.process_timeout
+        if max_memory.nil?
+          prefix << "TO[#{timeout_at}]:"
+        else
+          prefix << "TO[#{timeout_at}][#{max_memory}]:"
+        end
+      end
+      
+      unless prefix.nil?
+        $0 = "#{prefix}#{self.worker}:#{self.owner_id}:#{self.job_id}:#{self.task_id}"
+      end
+    end
+    
+    def revert_process_name
+      unless BackgroundQueue::Worker::Config.process_name_prefix.nil?
+        $0 = "#{BackgroundQueue::Worker::Config.process_name_prefix}:idle"
+      end
+    end
+    
   end
 end
