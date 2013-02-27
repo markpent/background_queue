@@ -51,6 +51,7 @@ module BackgroundQueue
       end
       
       def get_string_from_file(path)
+        raise BackgroundQueue::LoadError, "No configuration file specified" if path.nil?
         if File.exist?(path)
           File.open(path) { |f| f.read }
         else
