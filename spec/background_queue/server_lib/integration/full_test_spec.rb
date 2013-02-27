@@ -22,6 +22,8 @@ describe "Full Test" do
     it "will call worker server" do
 
       config_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/config.yml')
+      BackgroundQueue::Worker::Config.worker_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/')
+      BackgroundQueue::Worker::Config.secret = "this_is_used_to_make_sure_it_is_secure"
       
       server = BackgroundQueue::ServerLib::Server.new
 
@@ -39,9 +41,12 @@ describe "Full Test" do
         ss = TestWorkerServer.new(8001)
         ss.start(Proc.new { |controller|
           meth_name = controller.request.request_method
-          controller.render :text => lambda { |response,output| 
-            output.write({:percent=>100, :caption=>"Done"}.to_json)
-          }, :type=>"text/text"
+          controller.class.send(:include, BackgroundQueue::Worker::Calling)
+          controller.run_worker({:some=>'context'})
+          
+          #controller.render :text => lambda { |response,output| 
+          #  output.write({:percent=>100, :caption=>"Done"}.to_json)
+          #}, :type=>"text/text"
           #controller.render :text=>, :type=>"text/text"
         })
         
@@ -51,7 +56,7 @@ describe "Full Test" do
         client = BackgroundQueue::Client.new(client_config_path)
         
   
-        job_handle = client.add_task(:some_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com"} )
+        job_handle = client.add_task(:simple_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com"} )
         
         
         ss.wait_to_be_called.should be_true
@@ -76,6 +81,8 @@ describe "Full Test" do
   context "init task" do
     it "will spawn more tasks" do
       config_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/config.yml')
+      BackgroundQueue::Worker::Config.worker_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/')
+      BackgroundQueue::Worker::Config.secret = "this_is_used_to_make_sure_it_is_secure"
       
 
       
@@ -107,19 +114,19 @@ describe "Full Test" do
         ss = TestWorkerServer.new(8001, true)
         ss.start(Proc.new { |controller|
           #puts "worker called"
-          meth_name = controller.request.request_method
+          meth_name = controller.request.request_method 
           if task_pos == 0
             task_pos += 1
             #puts "Adding more tasks"
             client2 = BackgroundQueue::Client.new(client_config_path)
-            result2, server_used2 = client.add_tasks(:some_worker, :owner_id, :job_id, [[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], 2, {:something=>:else}, {:domain=>"www.example.com"} )
+            result2, server_used2 = client.add_tasks(:callback_worker, :owner_id, :job_id, [[:task1_id, {:a=>:b}], [:task2_id, {:e=>:f}]], 2, {:something=>:else}, {:domain=>"www.example.com"} )
           end
-          controller.render :text=>{:percent=>100, :caption=>"Done"}.to_json, :type=>"text/text"
+          controller.render :text=>{:percent=>100, :caption=>"Done"}.to_json + "\n" + {:finished=>true}.to_json, :type=>"text/text"
         })
         
         
         
-        job_handle = client.add_task(:some_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com", :weight=>20.0, :exclude=>true, :initial_progress_caption=>"Loading" } )
+        job_handle = client.add_task(:callback_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com", :weight=>20.0, :exclude=>true, :initial_progress_caption=>"Loading" } )
         
         result = client.get_status(job_handle )
   

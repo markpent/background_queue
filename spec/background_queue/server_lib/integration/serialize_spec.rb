@@ -24,6 +24,8 @@ describe "Serialize Test" do
       File.delete("/tmp/bq_tasks") if File.exist?("/tmp/bq_tasks")
 
       config_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/config-serialize.yml')
+      BackgroundQueue::Worker::Config.worker_path = File.expand_path(File.dirname(__FILE__) + '/../../../resources/')
+      BackgroundQueue::Worker::Config.secret = "this_is_used_to_make_sure_it_is_secure"
       
       server = BackgroundQueue::ServerLib::Server.new
 
@@ -62,13 +64,15 @@ describe "Serialize Test" do
         client = BackgroundQueue::Client.new(client_config_path)
         
   
-        job_handle = client.add_task(:some_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com"} )
+        job_handle = client.add_task(:simple_worker, :owner_id, :job_id, :task_id, 2, {:something=>:else}, {:domain=>"www.example.com"} )
         
         mutex.synchronize {
           unless called
             condvar.wait(mutex, 5)
           end
         }
+        
+        
         
         called.should be_true
         
@@ -81,13 +85,8 @@ describe "Serialize Test" do
         
         ss = TestWorkerServer.new(8001)
         ss.start(Proc.new { |controller|
-          meth_name = controller.request.request_method
-          
-          mutex.synchronize {
-            called = true
-            condvar.signal
-          }
-          controller.render :text => {:percent=>100, :caption=>"Done"}.to_json, :type=>"text/text"
+          controller.class.send(:include, BackgroundQueue::Worker::Calling)
+          controller.run_worker({:some=>'context'})  
         })
         
         
