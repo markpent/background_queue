@@ -54,6 +54,7 @@ module BackgroundQueue::ServerLib
               @server.task_queue.finish_task(task)
               @server.change_stat(:running, -1)
               @server.change_stat(:run_tasks, 1)
+              @server.report_error("Error Calling Worker #{task.worker}", task.to_json)
               task.set_as_errored #let the task know it did not finish successfully...
             else
               @server.task_queue.add_task_to_error_list(task)
@@ -72,8 +73,12 @@ module BackgroundQueue::ServerLib
     
     def run
       while @server.running?
-        task = get_next_task
-        call_worker(task) unless task.nil?
+        begin
+          task = get_next_task
+          call_worker(task) unless task.nil?
+        rescue Exception=>e
+          @server.report_error("Exception In Worker Thread: #{e.message}", e.backtrace.join("\n"))
+        end
       end
     end
   end

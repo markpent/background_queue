@@ -50,6 +50,7 @@ module BackgroundQueue::ServerLib
       rescue Exception=>e
         @server.logger.error("Error processing command: #{e.message}")
         @server.logger.debug(e.backtrace.join("\n"))
+        @server.report_error("Exception In Event Connection: #{e.message}", e.backtrace.join("\n"))
         send_error(e.message)
       end
     end

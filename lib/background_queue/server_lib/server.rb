@@ -166,7 +166,8 @@ MESSAGE_END
           @logger.error(ex.backtrace.join("\n"))
         end
       else
-        @logger.debug("Not reporting error #{subject}")
+        @logger.debug("Not reporting error '#{subject}'")
+        @logger.debug(message)
       end
     end
     

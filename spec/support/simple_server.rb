@@ -26,5 +26,8 @@ class SimpleServer
   def change_stat(stat, delta)
     
   end
+  
+  def report_error(subject, message)
+  end
  
 end
