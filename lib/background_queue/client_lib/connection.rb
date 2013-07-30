@@ -1,4 +1,5 @@
 require 'timeout'
+require 'socket'
 
 module BackgroundQueue::ClientLib
   #A connection to a backend queue server
